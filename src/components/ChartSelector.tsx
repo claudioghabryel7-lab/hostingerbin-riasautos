@@ -74,40 +74,55 @@ export function ChartSelector({ transactions, formatValue }: ChartSelectorProps)
     >
       <Card className="glass-dark border-white/10 text-white">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Análise de Operações
+              <span className="truncate">Análise de Operações</span>
             </CardTitle>
             
-            {/* Seletor de Tipo de Gráfico */}
-            <div className="flex gap-2">
+            {/* Seletor de Tipo de Gráfico - Responsivo */}
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <Button
                 variant={chartType === 'pie' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setChartType('pie')}
-                className={chartType === 'pie' ? 'bg-blue-500 hover:bg-blue-600' : 'border-white/10 text-white hover:bg-white/10'}
+                className={`text-xs px-2 py-1 ${
+                  chartType === 'pie' 
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    : 'border-white/10 text-white hover:bg-white/10'
+                }`}
               >
-                <PieChart className="h-4 w-4 mr-1" />
-                Pizza
+                <PieChart className="h-3 w-3 mr-1" />
+                <span className="hidden xs:inline">Pizza</span>
+                <span className="xs:hidden">P</span>
               </Button>
               <Button
                 variant={chartType === 'line' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setChartType('line')}
-                className={chartType === 'line' ? 'bg-blue-500 hover:bg-blue-600' : 'border-white/10 text-white hover:bg-white/10'}
+                className={`text-xs px-2 py-1 ${
+                  chartType === 'line' 
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    : 'border-white/10 text-white hover:bg-white/10'
+                }`}
               >
-                <LineChart className="h-4 w-4 mr-1" />
-                Linhas
+                <LineChart className="h-3 w-3 mr-1" />
+                <span className="hidden xs:inline">Linhas</span>
+                <span className="xs:hidden">L</span>
               </Button>
               <Button
                 variant={chartType === 'bar' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setChartType('bar')}
-                className={chartType === 'bar' ? 'bg-blue-500 hover:bg-blue-600' : 'border-white/10 text-white hover:bg-white/10'}
+                className={`text-xs px-2 py-1 ${
+                  chartType === 'bar' 
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    : 'border-white/10 text-white hover:bg-white/10'
+                }`}
               >
-                <BarChart2 className="h-4 w-4 mr-1" />
-                Barras
+                <BarChart2 className="h-3 w-3 mr-1" />
+                <span className="hidden xs:inline">Barras</span>
+                <span className="xs:hidden">B</span>
               </Button>
             </div>
           </div>
@@ -130,9 +145,9 @@ export function ChartSelector({ transactions, formatValue }: ChartSelectorProps)
 // Componente de Gráfico de Pizza Corrigido
 function PieChartComponent({ wins, losses, winPercentage, lossPercentage, total }: any) {
   return (
-    <div className="space-y-6">
-      {/* Gráfico de Pizza Moderno */}
-      <div className="relative w-48 h-48 mx-auto">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Gráfico de Pizza Moderno - Responsivo */}
+      <div className="relative w-32 h-32 sm:w-48 sm:h-48 mx-auto">
         <svg viewBox="0 0 200 200" className="transform rotate-0">
           {/* Círculo de fundo */}
           <circle
@@ -182,26 +197,26 @@ function PieChartComponent({ wins, losses, winPercentage, lossPercentage, total 
         {/* Centro do gráfico */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-3xl font-bold text-white">{total}</div>
+            <div className="text-xl sm:text-3xl font-bold text-white">{total}</div>
             <div className="text-xs text-white/60">Total</div>
           </div>
         </div>
       </div>
 
-      {/* Legendas e Estatísticas */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      {/* Legendas e Estatísticas - Responsivo */}
+      <div className="space-y-3 sm:space-y-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20"
+            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-green-500/10 rounded-lg border border-green-500/20"
           >
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <div>
-              <div className="text-sm text-green-400 font-semibold">Wins</div>
-              <div className="text-2xl font-bold text-white">{wins}</div>
-              <div className="text-sm text-green-400">{winPercentage.toFixed(1)}%</div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs sm:text-sm text-green-400 font-semibold truncate">Wins</div>
+              <div className="text-lg sm:text-2xl font-bold text-white">{wins}</div>
+              <div className="text-xs sm:text-sm text-green-400">{winPercentage.toFixed(1)}%</div>
             </div>
           </motion.div>
 
@@ -209,26 +224,26 @@ function PieChartComponent({ wins, losses, winPercentage, lossPercentage, total 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg border border-red-500/20"
+            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-red-500/10 rounded-lg border border-red-500/20"
           >
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <div>
-              <div className="text-sm text-red-400 font-semibold">Losses</div>
-              <div className="text-2xl font-bold text-white">{losses}</div>
-              <div className="text-sm text-red-400">{lossPercentage.toFixed(1)}%</div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full flex-shrink-0"></div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs sm:text-sm text-red-400 font-semibold truncate">Losses</div>
+              <div className="text-lg sm:text-2xl font-bold text-white">{losses}</div>
+              <div className="text-xs sm:text-sm text-red-400">{lossPercentage.toFixed(1)}%</div>
             </div>
           </motion.div>
         </div>
 
-        {/* Taxa de Acerto */}
+        {/* Taxa de Acerto - Responsivo */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="text-center p-4 bg-white/5 rounded-lg border border-white/10"
+          className="text-center p-3 sm:p-4 bg-white/5 rounded-lg border border-white/10"
         >
-          <div className="text-sm text-white/60 mb-1">Taxa de Acerto</div>
-          <div className={`text-3xl font-bold ${
+          <div className="text-xs sm:text-sm text-white/60 mb-1">Taxa de Acerto</div>
+          <div className={`text-xl sm:text-3xl font-bold ${
             winPercentage >= 50 ? 'text-green-400' : 'text-red-400'
           }`}>
             {winPercentage.toFixed(1)}%

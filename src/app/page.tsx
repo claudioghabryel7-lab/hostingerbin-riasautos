@@ -101,25 +101,25 @@ export default function HomePage() {
                     <MetricCard
                       title="Lucro Total"
                       value={formatValue(metrics.totalProfit, defaultCurrency)}
-                      change={Math.round(metrics.totalProfit * 100) / 100}
+                      change={undefined}
                       isPositive={metrics.totalProfit >= 0}
                     />
                     <MetricCard
                       title="Win Rate"
                       value={`${metrics.winRate.toFixed(1)}%`}
-                      change={Math.round((metrics.winRate - 50) * 10) / 10}
+                      change={undefined}
                       isPositive={metrics.winRate >= 50}
                     />
                     <MetricCard
                       title="Total Ops"
                       value={`${transactions.length}`}
-                      change={0}
+                      change={undefined}
                       isPositive={transactions.length > 0}
                     />
                     <MetricCard
                       title="Saldo Atual"
                       value={formatValue(metrics.currentBalance, defaultCurrency)}
-                      change={Math.round(metrics.currentBalance * 100) / 100}
+                      change={undefined}
                       isPositive={metrics.currentBalance >= 0}
                     />
                   </div>

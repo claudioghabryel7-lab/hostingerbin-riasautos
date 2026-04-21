@@ -30,12 +30,12 @@ export function MetricCard({ title, value, change, isPositive, metrics, formatVa
           <CardContent className="p-4">
             <div className="text-center">
               <div className="text-sm text-white/60 mb-1">{title}</div>
-              <div className={`text-2xl font-bold ${isPositive !== false ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`text-2xl font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
                 {value}
               </div>
               {change !== undefined && (
-                <div className={`text-xs mt-1 ${isPositive !== false ? 'text-green-400' : 'text-red-400'}`}>
-                  {isPositive !== false ? '+' : ''}{change}%
+                <div className={`text-xs mt-1 ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isPositive ? '+' : ''}{change}%
                 </div>
               )}
             </div>
