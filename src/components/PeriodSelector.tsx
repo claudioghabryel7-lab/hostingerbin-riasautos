@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Clock, TrendingUp } from 'lucide-react';
+import { Period } from '@/types/period';
 
-export type Period = 'day' | 'month' | 'quarter' | 'year';
+export type { Period } from '@/types/period';
 
 interface PeriodSelectorProps {
   selectedPeriod: Period;
@@ -23,6 +24,15 @@ export function PeriodSelector({ selectedPeriod, onPeriodChange }: PeriodSelecto
       borderColor: 'border-blue-400/50'
     },
     {
+      value: 'week' as Period,
+      name: 'Semana',
+      description: 'Operações da semana',
+      icon: Clock,
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/20',
+      borderColor: 'border-purple-400/50'
+    },
+    {
       value: 'month' as Period,
       name: 'Mês',
       description: 'Operações do mês',
@@ -32,19 +42,10 @@ export function PeriodSelector({ selectedPeriod, onPeriodChange }: PeriodSelecto
       borderColor: 'border-green-400/50'
     },
     {
-      value: 'quarter' as Period,
-      name: '3 Meses',
-      description: 'Últimos 3 meses',
+      value: 'all' as Period,
+      name: 'Tudo',
+      description: 'Todas as operações',
       icon: TrendingUp,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/20',
-      borderColor: 'border-purple-400/50'
-    },
-    {
-      value: 'year' as Period,
-      name: 'Ano',
-      description: 'Operações do ano',
-      icon: Calendar,
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/20',
       borderColor: 'border-orange-400/50'
@@ -104,6 +105,14 @@ export function getPeriodDates(period: Period): { start: Date; end: Date } {
       end.setHours(23, 59, 59, 999);
       break;
       
+    case 'week':
+      const weekAgo = new Date(now);
+      weekAgo.setDate(now.getDate() - 7);
+      start.setTime(weekAgo.getTime());
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      break;
+      
     case 'month':
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
@@ -111,20 +120,8 @@ export function getPeriodDates(period: Period): { start: Date; end: Date } {
       end.setHours(23, 59, 59, 999);
       break;
       
-    case 'quarter':
-      const threeMonthsAgo = new Date(now);
-      threeMonthsAgo.setMonth(now.getMonth() - 3);
-      start.setTime(threeMonthsAgo.getTime());
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      break;
-      
-    case 'year':
-      start.setMonth(0, 1);
-      start.setHours(0, 0, 0, 0);
-      end.setMonth(11, 31);
-      end.setHours(23, 59, 59, 999);
-      break;
+    case 'all':
+      return { start: new Date(0), end: new Date() };
   }
 
   return { start, end };

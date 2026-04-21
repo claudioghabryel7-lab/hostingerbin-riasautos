@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { SimpleAuthGuard } from '@/components/SimpleAuthGuard';
 import { MetricCard } from '@/components/MetricCard';
-import { PeriodSelector } from '@/components/PeriodSelector';
+import { PeriodSelector, Period } from '@/components/PeriodSelector';
 import { PieChart } from '@/components/PieChart';
 import { HistorySidebar } from '@/components/HistorySidebar';
 import { NewTransactionModal } from '@/components/NewTransactionModal';
@@ -20,7 +20,7 @@ import Link from 'next/link';
 export default function HomePage() {
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false);
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>('all');
   
   const { defaultCurrency, isLoading: isLoadingCurrency, hasSelected } = useDefaultCurrency();
   const { transactions, addTransaction, removeTransaction, metrics, isLoading, formatValue } = useTransactions();
@@ -34,9 +34,9 @@ export default function HomePage() {
     const daysDiff = Math.floor((now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
     
     switch (selectedPeriod) {
-      case '7d': return daysDiff <= 7;
-      case '30d': return daysDiff <= 30;
-      case '90d': return daysDiff <= 90;
+      case 'day': return daysDiff <= 1;
+      case 'week': return daysDiff <= 7;
+      case 'month': return daysDiff <= 30;
       default: return true;
     }
   });
@@ -126,8 +126,8 @@ export default function HomePage() {
 
                   {/* Period Selector */}
                   <PeriodSelector 
-                    selectedPeriod={selectedPeriod as 'day' | 'week' | 'month' | 'all'} 
-                    onPeriodChange={(period) => setSelectedPeriod(period as any)} 
+                    selectedPeriod={selectedPeriod} 
+                    onPeriodChange={setSelectedPeriod} 
                   />
 
                   {/* Chart and Tools Link */}
