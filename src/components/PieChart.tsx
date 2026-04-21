@@ -135,37 +135,42 @@ export function PieChart({ transactions }: PieChartProps) {
                   </div>
                 </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.8 }}
-                className="text-center"
-              >
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="w-4 h-4 bg-red-500 rounded"></div>
-                  <span className="text-red-400 font-semibold">LOSSES</span>
-                </div>
-                <div className="text-2xl font-bold text-white">{losses}</div>
-                <div className="text-sm text-white/60">{lossPercentage.toFixed(1)}%</div>
-              </motion.div>
-            </div>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg border border-red-500/20"
+                >
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-red-400" />
+                      <span className="text-red-400 font-semibold">Losses</span>
+                    </div>
+                    <div className="text-2xl font-bold text-white">{losses}</div>
+                    <div className="text-sm text-red-400">{lossPercentage.toFixed(1)}%</div>
+                  </div>
+                </motion.div>
+              </div>
 
-            {/* Taxa de Acerto */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 1 }}
-              className="w-full p-4 rounded-lg bg-white/5 border border-white/10"
-            >
-              <div className="text-center">
+              {/* Taxa de Acerto */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-center p-4 bg-white/5 rounded-lg border border-white/10"
+              >
                 <div className="text-sm text-white/60 mb-1">Taxa de Acerto</div>
                 <div className={`text-3xl font-bold ${
                   winPercentage >= 50 ? 'text-green-400' : 'text-red-400'
                 }`}>
                   {winPercentage.toFixed(1)}%
                 </div>
-              </div>
-            </motion.div>
+                <div className="text-xs text-white/40 mt-1">
+                  {winPercentage >= 50 ? 'Acima da meta' : 'Abaixo da meta'}
+                </div>
+              </motion.div>
+            </div>
           </div>
         </CardContent>
       </Card>
