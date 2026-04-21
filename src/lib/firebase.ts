@@ -4,14 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCNaYrUnXPiWN07XRro49t43sua3f_ZysE",
-  authDomain: "gestorfinanceiro-1bfd0.firebaseapp.com",
-  databaseURL: "https://gestorfinanceiro-1bfd0-default-rtdb.firebaseio.com",
-  projectId: "gestorfinanceiro-1bfd0",
-  storageBucket: "gestorfinanceiro-1bfd0.firebasestorage.app",
-  messagingSenderId: "228477080775",
-  appId: "1:228477080775:web:e6893d9dc9a1bd632ddae2",
-  measurementId: "G-Z8RR391TQK"
+  apiKey: "AIzaSyCGAv-nVca02Ih8A291e6M6BX4l6c-xN34",
+  authDomain: "obinarias-68350.firebaseapp.com",
+  projectId: "obinarias-68350",
+  storageBucket: "obinarias-68350.firebasestorage.app",
+  messagingSenderId: "553693849316",
+  appId: "1:553693849316:web:a65ac79d56b90ddc86aef1",
+  measurementId: "G-E1LHPB2FYS"
 };
 
 // Initialize Firebase
