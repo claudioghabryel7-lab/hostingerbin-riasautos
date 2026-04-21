@@ -70,7 +70,7 @@ export function TransactionTable({ transactions, onDeleteTransaction, formatValu
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {transaction.type === 'win' ? (
+                          {transaction.result === 'win' ? (
                             <>
                               <TrendingUp className="h-4 w-4 text-green-400" />
                               <span className="text-green-400 font-medium">WIN</span>
@@ -84,15 +84,15 @@ export function TransactionTable({ transactions, onDeleteTransaction, formatValu
                         </div>
                       </TableCell>
                       <TableCell className="text-right text-white/90">
-                        {formatValue(transaction.investment, transaction.currency)}
+                        {formatValue(transaction.amount, transaction.currency)}
                       </TableCell>
                       <TableCell className="text-right text-white/90">
-                        {transaction.withdrawn ? formatValue(transaction.withdrawn, transaction.currency) : '-'}
+                        {transaction.profit ? formatValue(transaction.profit, transaction.currency) : '-'}
                       </TableCell>
                       <TableCell className={`text-right font-medium ${
-                        transaction.netProfit >= 0 ? 'text-green-400' : 'text-red-400'
+                        transaction.profit >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
-                        {formatValue(transaction.netProfit, transaction.currency)}
+                        {formatValue(transaction.profit, transaction.currency)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button

@@ -158,9 +158,11 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = userProfile?.isAdmin || false;
   const hasAccess = isAdmin || userProfile?.plan !== 'free';
   
-  const canAccessFeatures = isAdmin || 
+  const canAccessFeatures = Boolean(
+    isAdmin || 
     (userProfile?.plan === 'free' && userProfile?.trialEndsAt && new Date() < userProfile.trialEndsAt) ||
-    (userProfile?.plan !== 'free' && userProfile?.subscriptionEndsAt && new Date() < userProfile.subscriptionEndsAt);
+    (userProfile?.plan !== 'free' && userProfile?.subscriptionEndsAt && new Date() < userProfile.subscriptionEndsAt)
+  );
 
   const value: AuthContextType = {
     user,
