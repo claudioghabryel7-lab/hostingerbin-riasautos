@@ -59,7 +59,8 @@ export function MetricCard({ title, value, change, isPositive, metrics, formatVa
   // Função segura de formatação
   const safeFormatValue = (value: number, currency?: string) => {
     if (typeof formatValue === 'function') {
-      return formatValue(value, currency);
+      // Usar type assertion para garantir compatibilidade
+      return formatValue(value, currency as 'BRL' | 'USD' | undefined);
     }
     // Fallback simples
     const formattedValue = currency === 'USD' ? (value / exchangeRate).toFixed(2) : value.toFixed(2);
