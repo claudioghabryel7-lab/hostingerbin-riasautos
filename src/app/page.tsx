@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { SimpleAuthGuard } from '@/components/SimpleAuthGuard';
 import { MetricCard } from '@/components/MetricCard';
 import { PeriodSelector, Period } from '@/components/PeriodSelector';
-import { PieChart } from '@/components/PieChart';
+import { ChartSelector } from '@/components/ChartSelector';
 import { HistorySidebar } from '@/components/HistorySidebar';
 import { NewTransactionModal } from '@/components/NewTransactionModal';
 import { CurrencyOnboarding } from '@/components/CurrencyOnboarding';
@@ -134,7 +134,7 @@ export default function HomePage() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Chart */}
                     <div className="lg:col-span-1">
-                      <PieChart transactions={filteredTransactions} />
+                      <ChartSelector transactions={filteredTransactions} formatValue={formatValue} />
                     </div>
 
                     {/* Tools Link */}
