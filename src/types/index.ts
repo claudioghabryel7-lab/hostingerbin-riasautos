@@ -1,16 +1,16 @@
 export interface Transaction {
   id: string;
-  date: Date;
-  type: 'win' | 'loss';
-  investment: number;
-  withdrawn?: number;
-  netProfit: number;
+  date: string; // Mudar para string para compatibilidade
+  result: 'win' | 'loss'; // Mudar de type para result
+  amount: number; // Mudar de investment para amount
+  profit: number; // Mudar de netProfit para profit
+  asset: string; // Adicionar asset que os componentes usam
   currency: 'BRL' | 'USD';
-  exchangeRate?: number; // Cotação na data da transação (USD para BRL)
+  exchangeRate?: number;
 }
 
 export interface Metrics {
-  totalCycleProfit: number;
+  totalProfit: number;
   winRate: number;
   currentBalance: number;
   totalInvested: number;

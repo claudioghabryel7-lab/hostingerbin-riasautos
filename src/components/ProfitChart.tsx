@@ -19,12 +19,12 @@ export function ProfitChart({ transactions }: ProfitChartProps) {
 
   // Agrupar transações por dia
   const dailyData = transactions.reduce((acc, transaction) => {
-    const dateKey = transaction.date.toLocaleDateString('pt-BR');
+    const dateKey = new Date(transaction.date).toLocaleDateString('pt-BR');
     if (!acc[dateKey]) {
       acc[dateKey] = { profit: 0, wins: 0, losses: 0 };
     }
-    acc[dateKey].profit += transaction.netProfit;
-    if (transaction.type === 'win') {
+    acc[dateKey].profit += transaction.profit;
+    if (transaction.result === 'win') {
       acc[dateKey].wins++;
     } else {
       acc[dateKey].losses++;

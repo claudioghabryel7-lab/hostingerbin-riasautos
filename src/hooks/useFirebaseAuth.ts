@@ -93,7 +93,19 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Tentando signInWithEmailAndPassword...');
       const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Login bem-sucedido:', result.user.uid);
+      console.log('Login Firebase bem-sucedido:', result.user.uid);
+      
+      // Verificar se usuário existe no Firestore
+      console.log('Verificando se usuário existe no Firestore...');
+      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+      
+      if (!userDoc.exists()) {
+        console.log('Usuário não encontrado no Firestore, fazendo logout...');
+        await signOut(auth);
+        throw new Error('Usuário não encontrado. Por favor, faça seu cadastro primeiro.');
+      }
+      
+      console.log('Usuário validado com sucesso no Firestore');
     } catch (error: any) {
       console.error('Erro no login:', error);
       console.error('Código do erro:', error.code);
@@ -109,6 +121,8 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Configuração do Firebase não encontrada. Verifique as credenciais.');
       } else if (error.code === 'auth/project-not-found') {
         throw new Error('Projeto Firebase não encontrado. Verifique o projectId.');
+      } else if (error.message === 'Usuário não encontrado. Por favor, faça seu cadastro primeiro.') {
+        throw new Error('Usuário não encontrado. Por favor, faça seu cadastro primeiro.');
       } else {
         throw new Error('Erro ao fazer login: ' + error.message);
       }

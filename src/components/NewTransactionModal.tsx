@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,18 @@ export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTr
   const [form, setForm] = useState<NewTransactionForm>({
     investment: '',
     withdrawn: '',
-    date: new Date().toISOString().split('T')[0],
+    date: '', // Será inicializado no useEffect
     currency: defaultCurrency
   });
   const [transactionType, setTransactionType] = useState<'win' | 'loss'>('win');
+
+  // Inicializar data no cliente para evitar erro de hidratação
+  useEffect(() => {
+    setForm(prev => ({
+      ...prev,
+      date: new Date().toISOString().split('T')[0]
+    }));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +57,11 @@ export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTr
     const netProfit = transactionType === 'win' ? withdrawn - investment : -investment;
 
     onAddTransaction({
-      date: new Date(form.date),
-      type: transactionType,
-      investment,
-      withdrawn: transactionType === 'win' ? withdrawn : undefined,
-      netProfit,
+      date: form.date, // Mudar para string
+      result: transactionType, // Mudar de type para result
+      amount: investment, // Mudar de investment para amount
+      profit: netProfit, // Mudar de netProfit para profit
+      asset: 'EUR/USD', // Adicionar asset padrão
       currency: form.currency
     });
 
