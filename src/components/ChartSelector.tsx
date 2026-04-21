@@ -245,7 +245,7 @@ function PieChartComponent({ wins, losses, winPercentage, lossPercentage, total 
 // Componente de Gráfico de Linhas
 function LineChartComponent({ transactions, formatValue }: any) {
   // Agrupar transações por data
-  const dailyData = transactions.reduce((acc: any, transaction) => {
+  const dailyData = transactions.reduce((acc: any, transaction: any) => {
     const date = new Date(transaction.date).toLocaleDateString('pt-BR');
     if (!acc[date]) {
       acc[date] = { date, wins: 0, losses: 0, profit: 0 };
