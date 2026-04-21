@@ -4,17 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Menu, 
-  X, 
-  User, 
-  Settings, 
-  LogOut, 
-  CreditCard, 
-  TrendingUp, 
-  Shield, 
-  HelpCircle
-} from 'lucide-react';
+import { User, CreditCard, TrendingUp, Settings, LogOut, Menu, X, ChevronRight, Shield, HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
 
 export function UserMenu() {
@@ -80,17 +71,17 @@ export function UserMenu() {
       badge: null
     },
     {
-      icon: Shield,
-      label: 'Segurança',
-      description: 'Configurações de segurança',
-      action: () => console.log('Segurança'),
+      icon: Settings,
+      label: 'Configurações',
+      description: 'Gerenciar configurações',
+      action: () => window.location.href = '/settings',
       badge: null
     },
     {
-      icon: Settings,
-      label: 'Configurações',
-      description: 'Preferências do sistema',
-      action: () => console.log('Configurações'),
+      icon: Shield,
+      label: 'Segurança',
+      description: 'Configurar segurança',
+      action: () => console.log('Segurança'),
       badge: null
     },
     {
@@ -99,6 +90,14 @@ export function UserMenu() {
       description: 'Central de ajuda',
       action: () => console.log('Ajuda'),
       badge: null
+    },
+    {
+      icon: LogOut,
+      label: 'Sair',
+      description: 'Sair da conta',
+      action: logout,
+      badge: null,
+      isDestructive: true
     }
   ];
 

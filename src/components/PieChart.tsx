@@ -10,8 +10,8 @@ interface PieChartProps {
 }
 
 export function PieChart({ transactions }: PieChartProps) {
-  const wins = transactions.filter(t => t.type === 'win').length;
-  const losses = transactions.filter(t => t.type === 'loss').length;
+  const wins = transactions.filter(t => t.result === 'win').length;
+  const losses = transactions.filter(t => t.result === 'loss').length;
   const total = wins + losses;
 
   if (total === 0) {

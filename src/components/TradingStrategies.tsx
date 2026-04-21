@@ -6,399 +6,420 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
+  Target, 
   TrendingUp, 
-  TrendingDown, 
-  Clock, 
-  Target,
-  BarChart3,
-  Zap,
-  Shield,
-  AlertTriangle,
+  AlertTriangle, 
   CheckCircle,
-  XCircle
+  BarChart3,
+  Activity,
+  Zap,
+  Shield
 } from 'lucide-react';
+import { Transaction } from '@/types';
 
 interface TradingStrategiesProps {
-  transactions: any[];
+  transactions: Transaction[];
 }
 
 export function TradingStrategies({ transactions }: TradingStrategiesProps) {
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
 
+  // Estratégias com indicadores de alta assertividade
   const strategies = [
     {
-      id: 'rsi-divergence',
-      name: 'Divergência RSI',
-      category: 'Análise Técnica',
-      difficulty: 'Intermediário',
-      winRate: 72,
-      description: 'Identifica divergências entre o preço e o RSI para prever reversões.',
+      id: 'rsi_stochastic',
+      name: 'RSI + Stochastic Oversold',
+      description: 'Combinação de RSI e Stochastic para identificar pontos de entrada sobrevendidos',
+      icon: <Activity className="h-5 w-5" />,
+      color: 'text-green-400',
+      accuracy: '85%',
+      indicators: ['RSI (14)', 'Stochastic (14,3,3)'],
+      timeframe: 'M5 - M15',
+      assets: ['EUR/USD', 'GBP/USD', 'AUD/USD'],
       rules: [
-        'RSI abaixo de 30 com preço fazendo nova baixa = sinal de COMPRA',
-        'RSI acima de 70 com preço fazendo nova alta = sinal de VENDA',
+        'RSI abaixo de 30 (sobrevendido)',
+        'Stochastic %K cruzando %D para cima abaixo de 20',
         'Confirmar com padrão de velas de reversão',
-        'Stop loss de 2% e take profit de 4%'
+        'Entrada na próxima vela após confirmação',
+        'Stop Loss 2% abaixo da entrada',
+        'Take Profit 3:1'
       ],
       pros: [
         'Alta precisão em mercados laterais',
+        'Múltiplas confirmações reduzem falsos sinais',
+        'Funciona bem em pares de moedas principais'
+      ],
+      cons: [
+        'Menos frequente que outras estratégias',
+        'Requer paciência para esperar setup perfeito',
+        'Pode falhar em tendências fortes'
+      ],
+      risk: 'Médio'
+    },
+    {
+      id: 'bollinger_bounce',
+      name: 'Bollinger Bands Bounce',
+      description: 'Utiliza Bollinger Bands para identificar reversões nas bandas extremas',
+      icon: <BarChart3 className="h-5 w-5" />,
+      color: 'text-blue-400',
+      accuracy: '82%',
+      indicators: ['Bollinger Bands (20,2)', 'RSI (14)'],
+      timeframe: 'M1 - M5',
+      assets: ['EUR/USD', 'USD/JPY', 'GBP/JPY'],
+      rules: [
+        'Preço toca ou ultrapassa banda inferior (compra) ou superior (venda)',
+        'RSI deve estar abaixo de 30 (compra) ou acima de 70 (venda)',
+        'Aguardar 1-2 velas de confirmação',
+        'Entrada na reversão para dentro das bandas',
+        'Stop Loss fora da banda',
+        'Take Profit na banda oposta ou linha média'
+      ],
+      pros: [
+        'Setup visual claro e fácil de identificar',
+        'Alta taxa de acerto em mercados voláteis',
+        'Risco/recompensa bem definido'
+      ],
+      cons: [
+        'Falsos breakouts podem ocorrer',
+        'Requer monitoramento constante',
+        'Menos eficaz em mercados com baixa volatilidade'
+      ],
+      risk: 'Médio-Alto'
+    },
+    {
+      id: 'macd_divergence',
+      name: 'MACD Divergence Strategy',
+      description: 'Identifica divergências entre preço e MACD para prever reversões',
+      icon: <TrendingUp className="h-5 w-5" />,
+      color: 'text-purple-400',
+      accuracy: '78%',
+      indicators: ['MACD (12,26,9)', 'RSI (14)'],
+      timeframe: 'M15 - H1',
+      assets: ['EUR/USD', 'GBP/USD', 'USD/CHF'],
+      rules: [
+        'Identificar divergência baixista (preço alta, MACD baixa) ou altista (preço baixa, MACD alta)',
+        'RSI deve confirmar a divergência',
+        'Aguardar cruzamento MACD para confirmar entrada',
+        'Entrada após padrão de reversão de velas',
+        'Stop Loss no último máximo/mínimo',
+        'Take Profit 2-3x o risco'
+      ],
+      pros: [
+        'Sinais de alta confiabilidade',
+        'Funciona bem em múltiplos timeframes',
+        'Antecipa reversões significativas'
+      ],
+      cons: [
+        'Requer experiência para identificar divergências',
+        'Sinais menos frequentes',
+        'Pode ser tardio em mercados rápidos'
+      ],
+      risk: 'Médio'
+    },
+    {
+      id: 'ema_crossover',
+      name: 'EMA Crossover with Volume',
+      description: 'Cruzamento de EMAs confirmado por volume para entradas precisas',
+      icon: <Zap className="h-5 w-5" />,
+      color: 'text-yellow-400',
+      accuracy: '75%',
+      indicators: ['EMA 9/21', 'Volume', 'RSI (14)'],
+      timeframe: 'M5 - M15',
+      assets: ['Todos os pares principais'],
+      rules: [
+        'EMA 9 cruzando EMA 21 para cima (compra) ou para baixo (venda)',
+        'Volume deve aumentar significativamente no cruzamento',
+        'RSI deve estar acima de 50 (compra) ou abaixo de 50 (venda)',
+        'Entrada após confirmação do cruzamento',
+        'Stop Loss no último swing',
+        'Take Profit 2:1 ou próximo suporte/resistência'
+      ],
+      pros: [
         'Sinais claros e objetivos',
-        'Funciona bem em múltiplos timeframes'
+        'Volume adiciona confirmação extra',
+        'Funciona bem em mercados com tendência'
       ],
       cons: [
-        'Requer prática para identificar divergências',
-        'Pode gerar falsos sinais em tendências fortes',
-        'Necessita confirmação adicional'
+        'Falsos cruzamentos em mercados laterais',
+        'Pode ser tardio em reversões rápidas',
+        'Requer análise de múltiplos indicadores'
       ],
-      timeframes: ['M5', 'M15', 'H1'],
-      assets: ['EUR/USD', 'GBP/USD', 'Ouro', 'Petróleo']
+      risk: 'Médio'
     },
     {
-      id: 'support-resistance',
-      name: 'Suporte e Resistência',
-      category: 'Análise Clássica',
-      difficulty: 'Iniciante',
-      winRate: 68,
-      description: 'Opera baseado em topos e fundos significativos do gráfico.',
+      id: 'fibonacci_retracement',
+      name: 'Fibonacci Retracement Levels',
+      description: 'Usa níveis de Fibonacci para identificar suportes e resistências',
+      icon: <Target className="h-5 w-5" />,
+      color: 'text-red-400',
+      accuracy: '80%',
+      indicators: ['Fibonacci', 'RSI (14)', 'Volume'],
+      timeframe: 'M15 - H4',
+      assets: ['EUR/USD', 'GBP/USD', 'USD/JPY'],
       rules: [
-        'Identifique níveis claros de suporte e resistência',
-        'Aguarde teste do nível com confirmação',
-        'Entrar na direção da rejeição do nível',
-        'Use volume para confirmar a força'
+        'Identificar swing significativo (alta para baixa ou vice-versa)',
+        'Traçar níveis de Fibonacci (38.2%, 50%, 61.8%)',
+        'Aguardar preço atingir nível 50% ou 61.8%',
+        'RSI deve mostrar sobrevenda/venda no nível',
+        'Volume aumentando na confirmação',
+        'Entrada na reversão do nível',
+        'Stop Loss abaixo/acima do nível 61.8%',
+        'Take Profit no nível 38.2% ou máximo/mínimo anterior'
       ],
       pros: [
-        'Fácil de aprender e aplicar',
-        'Níveis funcionam em todos os mercados',
-        'Alta probabilidade de acerto'
+        'Níveis matemáticos precisos',
+        'Alta probabilidade de reversão',
+        'Funciona bem em todos os mercados'
       ],
       cons: [
-        'Subjetividade na identificação dos níveis',
-        'Breakouts falsos são comuns',
-        'Requer paciência para esperar setups'
+        'Subjetivo na seleção de swings',
+        'Requer prática para identificar corretamente',
+        'Mercado pode ignorar níveis em eventos noticiosos'
       ],
-      timeframes: ['M15', 'H1', 'H4'],
-      assets: ['Todos os pares de moedas', 'Índices', 'Commodities']
+      risk: 'Médio'
     },
     {
-      id: 'breakout-momentum',
-      name: 'Breakout com Momentum',
-      category: 'Momentum',
-      difficulty: 'Intermediário',
-      winRate: 65,
-      description: 'Aproveita o rompimento de níveis importantes com volume.',
+      id: 'support_resistance_breakout',
+      name: 'Support/Resistance Breakout',
+      description: 'Identifica breakouts de suportes/resistências com confirmação',
+      icon: <Shield className="h-5 w-5" />,
+      color: 'text-orange-400',
+      accuracy: '77%',
+      indicators: ['Suporte/Resistência', 'Volume', 'RSI (14)'],
+      timeframe: 'M5 - H1',
+      assets: ['Todos os pares voláteis'],
       rules: [
-        'Identifique consolidação clara',
-        'Aguarde rompimento com volume aumentado',
-        'Entrar após confirmação do breakout',
-        'Use trailing stop para proteger ganhos'
+        'Identificar nível claro de suporte/resistência',
+        'Aguardar teste do nível (mínimo 2 toques)',
+        'Volume deve aumentar no breakout',
+        'RSI deve confirmar direção',
+        'Entrada no fechamento da vela de breakout',
+        'Stop Loss dentro do nível rompido',
+        'Take Profit 2-3x o risco'
       ],
       pros: [
-        'Grande potencial de lucro',
-        'Sinais claros de entrada',
-        'Funciona bem em volatilidade alta'
+        'Setup visual fácil de identificar',
+        'Alta probabilidade em níveis testados',
+        'Risco bem definido'
       ],
       cons: [
-        'Alto risco de falsos breakouts',
-        'Requer gestão de risco rigorosa',
-        'Pode gerar perdas rápidas'
+        'Falsos breakouts comuns',
+        'Requer paciência para setup correto',
+        'Pode ser parado em movimentos bruscos'
       ],
-      timeframes: ['M5', 'M15', 'H1'],
-      assets: ['GBP/JPY', 'EUR/JPY', 'Índices voláteis']
-    },
-    {
-      id: 'fibonacci-retracement',
-      name: 'Retração de Fibonacci',
-      category: 'Análise Técnica',
-      difficulty: 'Avançado',
-      winRate: 70,
-      description: 'Usa níveis de Fibonacci para identificar pontos de reversão.',
-      rules: [
-        'Desenhe Fibonacci do swing alto ao baixo (ou vice-versa)',
-        'Procure reversão nos níveis 38.2%, 50% ou 61.8%',
-        'Combine com outros indicadores',
-        'Confirme com padrão de candles'
-      ],
-      pros: [
-        'Níveis muito precisos',
-        'Funciona bem em tendências',
-        'Amplamente usado por profissionais'
-      ],
-      cons: [
-        'Requer prática para desenhar corretamente',
-        'Subjetividade na escolha dos pontos',
-        'Múltiplos níveis podem confundir'
-      ],
-      timeframes: ['H1', 'H4', 'Daily'],
-      assets: ['EUR/USD', 'GBP/USD', 'Dow Jones', 'S&P 500']
-    },
-    {
-      id: 'moving-average-crossover',
-      name: 'Cruz de Médias Móveis',
-      category: 'Trend Following',
-      difficulty: 'Iniciante',
-      winRate: 62,
-      description: 'Sinais baseados no cruzamento de médias móveis de diferentes períodos.',
-      rules: [
-        'Use EMA 9 e EMA 21 para sinais rápidos',
-        'Cruz para cima = sinal de compra',
-        'Cruz para baixo = sinal de venda',
-        'Filtre sinais contra a tendência principal'
-      ],
-      pros: [
-        'Sinais objetivos e automáticos',
-        'Fácil de implementar',
-        'Bom para identificar tendências'
-      ],
-      cons: [
-        'Atraso nos sinais',
-        'Falsos cruzados em mercados laterais',
-        'Menos eficaz em alta volatilidade'
-      ],
-      timeframes: ['M5', 'M15', 'H1'],
-      assets: ['Todos os pares principais', 'Índices principais']
-    },
-    {
-      id: 'bollinger-bands',
-      name: 'Bandas de Bollinger',
-      category: 'Volatilidade',
-      difficulty: 'Intermediário',
-      winRate: 66,
-      description: 'Opera nas extremidades das bandas com reversão para a média.',
-      rules: [
-        'Toque na banda superior = sinal de venda',
-        'Toque na banda inferior = sinal de compra',
-        'Confirme com padrão de reversão',
-        'Use ADX para filtrar tendências'
-      ],
-      pros: [
-        'Funciona bem em mercados laterais',
-        'Sinais claros de extremos',
-        'Adapta-se à volatilidade'
-      ],
-      cons: [
-        'Perigoso em tendências fortes',
-        'Pode ficar preso em posições',
-        'Requer gestão de risco rigorosa'
-      ],
-      timeframes: ['M15', 'H1', 'H4'],
-      assets: ['EUR/USD', 'GBP/USD', 'Ouro']
+      risk: 'Alto'
     }
   ];
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Iniciante': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'Intermediário': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'Avançado': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+  const getAccuracyColor = (accuracy: string) => {
+    const value = parseInt(accuracy);
+    if (value >= 85) return 'text-green-400';
+    if (value >= 80) return 'text-blue-400';
+    if (value >= 75) return 'text-yellow-400';
+    return 'text-orange-400';
+  };
+
+  const getRiskColor = (risk: string) => {
+    switch (risk) {
+      case 'Baixo': return 'bg-green-500/20 text-green-400';
+      case 'Médio': return 'bg-yellow-500/20 text-yellow-400';
+      case 'Médio-Alto': return 'bg-orange-500/20 text-orange-400';
+      case 'Alto': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
-
-  const getWinRateColor = (winRate: number) => {
-    if (winRate >= 70) return 'text-green-400';
-    if (winRate >= 65) return 'text-yellow-400';
-    return 'text-red-400';
-  };
-
-  const selectedStrategyData = strategies.find(s => s.id === selectedStrategy);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Target className="h-6 w-6 text-green-400" />
-        <h3 className="text-xl font-bold text-white">Estratégias de Trading</h3>
+        <Target className="h-6 w-6 text-orange-400" />
+        <h3 className="text-xl font-bold text-white">Estratégias com Alta Assertividade</h3>
       </div>
 
-      {/* Strategy List */}
-      <div className="grid gap-4">
+      {/* Estratégias */}
+      <div className="space-y-4">
         {strategies.map((strategy, index) => (
           <motion.div
             key={strategy.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="glass-dark border-white/10 rounded-lg p-4 cursor-pointer hover:border-white/20 transition-all"
-            onClick={() => setSelectedStrategy(selectedStrategy === strategy.id ? null : strategy.id)}
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h4 className="text-white font-semibold">{strategy.name}</h4>
-                  <Badge className={getDifficultyColor(strategy.difficulty)}>
-                    {strategy.difficulty}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                    {strategy.category}
-                  </Badge>
-                </div>
-                
-                <p className="text-white/60 text-sm mb-3">{strategy.description}</p>
-                
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <span className="text-white/60">Win Rate:</span>
-                    <span className={`font-bold ${getWinRateColor(strategy.winRate)}`}>
-                      {strategy.winRate}%
-                    </span>
+            <Card className="glass-dark border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg bg-white/5 ${strategy.color}`}>
+                      {strategy.icon}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">{strategy.name}</h4>
+                      <p className="text-sm text-white/60">{strategy.description}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-white/40" />
-                    <span className="text-white/60">{strategy.timeframes.join(', ')}</span>
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${getAccuracyColor(strategy.accuracy)}`}>
+                      {strategy.accuracy}
+                    </div>
+                    <div className="text-xs text-white/60">Assertividade</div>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Indicadores e Timeframe */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-sm text-white/60 mb-1">Indicadores</div>
+                      <div className="flex flex-wrap gap-1">
+                        {strategy.indicators.map((indicator, i) => (
+                          <Badge key={i} variant="secondary" className="bg-blue-500/20 text-blue-400 text-xs">
+                            {indicator}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-white/60 mb-1">Timeframe</div>
+                      <Badge variant="secondary" className="bg-purple-500/20 text-purple-400">
+                        {strategy.timeframe}
+                      </Badge>
+                    </div>
+                    <div>
+                      <div className="text-sm text-white/60 mb-1">Risco</div>
+                      <Badge variant="secondary" className={getRiskColor(strategy.risk)}>
+                        {strategy.risk}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Ativos */}
+                  <div>
+                    <div className="text-sm text-white/60 mb-2">Ativos Recomendados</div>
+                    <div className="flex flex-wrap gap-2">
+                      {strategy.assets.map((asset, i) => (
+                        <span key={i} className="px-2 py-1 bg-white/5 rounded text-xs text-white">
+                          {asset}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Regras */}
+                  <div>
+                    <div className="text-sm text-white/60 mb-2 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4" />
+                      Regras da Estratégia
+                    </div>
+                    <ul className="space-y-1 text-sm text-white/80">
+                      {strategy.rules.map((rule, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-green-400 mt-0.5">{'\u2022'}</span>
+                          <span>{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Prós e Contras */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-green-400 mb-2 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Prós
+                      </div>
+                      <ul className="space-y-1 text-sm text-white/80">
+                        {strategy.pros.map((pro, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-green-400 mt-0.5">+</span>
+                            <span>{pro}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="text-sm text-red-400 mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        Contras
+                      </div>
+                      <ul className="space-y-1 text-sm text-white/80">
+                        {strategy.cons.map((con, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-red-400 mt-0.5">-</span>
+                            <span>{con}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Aviso de Risco */}
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5" />
+                      <div className="text-yellow-400 text-sm">
+                        <strong>Aviso de Risco:</strong> Estas estratégias têm alta assertividade baseada em análise histórica, 
+                        mas não garantem lucros. Sempre use gerenciamento de risco adequado e nunca arrisque mais de 2% 
+                        do seu capital em uma única operação.
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="ml-4">
-                {selectedStrategy === strategy.id ? (
-                  <XCircle className="h-5 w-5 text-white/40" />
-                ) : (
-                  <CheckCircle className="h-5 w-5 text-blue-400" />
-                )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </motion.div>
         ))}
       </div>
 
-      {/* Strategy Details */}
-      {selectedStrategyData && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-dark border-white/10 rounded-lg p-6"
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <h3 className="text-xl font-bold text-white">{selectedStrategyData.name}</h3>
-            <Badge className={getDifficultyColor(selectedStrategyData.difficulty)}>
-              {selectedStrategyData.difficulty}
-            </Badge>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Rules */}
-            <div>
-              <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-400" />
-                Regras da Estratégia
-              </h4>
-              <ul className="space-y-2">
-                {selectedStrategyData.rules.map((rule, index) => (
-                  <li key={index} className="text-white/80 text-sm flex items-start gap-2">
-                    <span className="text-green-400 mt-1">·</span>
-                    <span>{rule}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Pros and Cons */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-400" />
-                  Vantagens
-                </h4>
-                <ul className="space-y-2">
-                  {selectedStrategyData.pros.map((pro, index) => (
-                    <li key={index} className="text-green-400 text-sm flex items-start gap-2">
-                      <span className="mt-1">+</span>
-                      <span>{pro}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-red-400" />
-                  Desvantagens
-                </h4>
-                <ul className="space-y-2">
-                  {selectedStrategyData.cons.map((con, index) => (
-                    <li key={index} className="text-red-400 text-sm flex items-start gap-2">
-                      <span className="mt-1">-</span>
-                      <span>{con}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Assets and Timeframes */}
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-white font-semibold mb-2">Ativos Recomendados</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStrategyData.assets.map((asset, index) => (
-                    <Badge key={index} variant="secondary" className="bg-white/10 text-white/80">
-                      {asset}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="text-white font-semibold mb-2">Timeframes Ideais</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStrategyData.timeframes.map((timeframe, index) => (
-                    <Badge key={index} variant="secondary" className="bg-blue-500/10 text-blue-400">
-                      {timeframe}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Risk Warning */}
-          <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5" />
-              <div>
-                <p className="text-yellow-400 font-semibold mb-1">Aviso de Risco</p>
-                <p className="text-yellow-400/80 text-sm">
-                  Esta estratégia tem uma taxa de acerto estimada de {selectedStrategyData.winRate}%. 
-                  Sempre use gestão de risco adequada e nunca arrisque mais de 2% do seu capital em uma única operação.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* General Tips */}
+      {/* Dicas Gerais */}
       <Card className="glass-dark border-white/10">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Dicas Gerais para Opções Binárias
+            Dicas Essenciais para Alta Assertividade
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
-              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
-                <p className="text-green-400 text-sm">
-                  <strong>Gestão de Risco:</strong> Nunca arrisque mais de 2% do seu saldo por operação.
-                </p>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Disciplina:</strong> Siga estritamente as regras da estratégia sem desvios emocionais.
+                </div>
               </div>
-              <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <p className="text-blue-400 text-sm">
-                  <strong>Psicologia:</strong> Mantenha a disciplina e siga seu plano de trading.
-                </p>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Paciência:</strong> Aguarde apenas os setups perfeitos com todas as confirmações.
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Gerenciamento:</strong> Use sempre stop loss e nunca arrisque mais de 2% por operação.
+                </div>
               </div>
             </div>
             <div className="space-y-3">
-              <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                <p className="text-purple-400 text-sm">
-                  <strong>Análise:</strong> Combine múltiplos indicadores para confirmar sinais.
-                </p>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Análise:</strong> Confirme múltiplos indicadores antes de entrar na operação.
+                </div>
               </div>
-              <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <p className="text-yellow-400 text-sm">
-                  <strong>Paciência:</strong> Espere pelo setup perfeito, não force operações.
-                </p>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Horário:</strong> Opere nos horários de maior liquidez (Londres/NY).
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-400 mt-0.5" />
+                <div className="text-sm text-white/80">
+                  <strong>Diário:</strong> Registre todas as operações para analisar e melhorar continuamente.
+                </div>
               </div>
             </div>
           </div>

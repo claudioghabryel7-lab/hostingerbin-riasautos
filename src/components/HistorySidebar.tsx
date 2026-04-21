@@ -41,21 +41,34 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: H
     return grouped;
   };
 
-  const groupedTransactions = groupTransactionsByDate(transactions);
-  
   // Formatar datas apenas no cliente para evitar erro de hidratação
   const [isClient, setIsClient] = useState(false);
+  const [groupedTransactions, setGroupedTransactions] = useState<Record<string, Transaction[]>>({});
   const [formattedDates, setFormattedDates] = useState<Record<string, string>>({});
   
   useEffect(() => {
     setIsClient(true);
+    
+    // Agrupar transações por data
+    const recentTransactions = transactions.slice(-50); // Últimas 50 transações
+    const grouped = recentTransactions.reduce((acc, transaction) => {
+      const dateKey = new Date(transaction.date).toDateString();
+      if (!acc[dateKey]) {
+        acc[dateKey] = [];
+      }
+      acc[dateKey].push(transaction);
+      return acc;
+    }, {} as Record<string, Transaction[]>);
+    
+    setGroupedTransactions(grouped);
+    
     // Formatar datas apenas no cliente
     const formatted: Record<string, string> = {};
-    Object.keys(groupedTransactions).forEach(dateKey => {
+    Object.keys(grouped).forEach(dateKey => {
       formatted[dateKey] = new Date(dateKey).toLocaleDateString('pt-BR');
     });
     setFormattedDates(formatted);
-  }, [groupedTransactions]);
+  }, [transactions]); // Dependência apenas em transactions, não em groupedTransactions
   
   const dates = Object.keys(groupedTransactions).sort((a, b) => 
     new Date(b).getTime() - new Date(a).getTime()

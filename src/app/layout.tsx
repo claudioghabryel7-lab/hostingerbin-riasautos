@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { FirebaseAuthProvider } from "@/hooks/useFirebaseAuth";
+import { HydrationWarningSuppressor } from "@/components/HydrationWarningSuppressor";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -37,7 +38,11 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background text-foreground font-sans">
+      <body 
+        className="min-h-screen bg-background text-foreground font-sans" 
+        suppressHydrationWarning={true}
+      >
+        <HydrationWarningSuppressor />
         <FirebaseAuthProvider>
           {children}
         </FirebaseAuthProvider>

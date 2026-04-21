@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,13 @@ import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
 import { Transaction, NewTransactionForm } from '@/types';
 
 interface NewTransactionModalProps {
+  show: boolean;
+  onClose: () => void;
   onAddTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   defaultCurrency: 'BRL' | 'USD';
 }
 
-export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTransactionModalProps) {
-  const [open, setOpen] = useState(false);
+export function NewTransactionModal({ show, onClose, onAddTransaction, defaultCurrency }: NewTransactionModalProps) {
   const [form, setForm] = useState<NewTransactionForm>({
     investment: '',
     withdrawn: '',
@@ -71,7 +72,7 @@ export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTr
       date: new Date().toISOString().split('T')[0],
       currency: defaultCurrency
     });
-    setOpen(false);
+    onClose();
   };
 
   const handleInputChange = (field: keyof NewTransactionForm, value: string) => {
@@ -79,18 +80,15 @@ export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTr
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="glass-dark border-white/10 text-white hover:bg-white/10">
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Operação
-        </Button>
-      </DialogTrigger>
+    <Dialog open={show} onOpenChange={onClose}>
       <DialogContent className="glass-dark border-white/10 text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-white">
             Registrar Nova Operação
           </DialogTitle>
+          <DialogDescription className="text-white/60">
+            Preencha os dados abaixo para registrar uma nova operação de trading
+          </DialogDescription>
         </DialogHeader>
         
         <motion.form
@@ -211,7 +209,7 @@ export function NewTransactionModal({ onAddTransaction, defaultCurrency }: NewTr
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={onClose}
               className="flex-1 border-white/10 text-white hover:bg-white/10"
             >
               Cancelar

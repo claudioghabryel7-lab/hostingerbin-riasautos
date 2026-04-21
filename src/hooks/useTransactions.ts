@@ -5,14 +5,28 @@ import { Transaction, Metrics } from '@/types';
 import { getUSDToBRLRate, convertCurrency, formatCurrency } from '@/lib/exchangeRate';
 import { useDefaultCurrency } from './useDefaultCurrency';
 import { Period, getPeriodDates } from '@/components/PeriodSelector';
-
-const STORAGE_KEY = 'hotinger-transactions';
+import { 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  deleteDoc, 
+  doc, 
+  serverTimestamp,
+  getFirestore 
+} from 'firebase/firestore';
+import { useFirebaseAuth } from './useFirebaseAuth';
+import { db } from '@/lib/firebase';
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [exchangeRate, setExchangeRate] = useState<number>(5.50); // Valor padrão
+  const [exchangeRate, setExchangeRate] = useState<number>(5.50);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('month');
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useFirebaseAuth();
   const { defaultCurrency } = useDefaultCurrency();
 
   // Buscar cotação do dólar ao montar
@@ -31,28 +45,80 @@ export function useTransactions() {
     loadExchangeRate();
   }, []);
 
-  // Carregar transações do localStorage ao montar
+  // Carregar transações do Firestore em tempo real
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setTransactions(parsed.map((t: any) => ({
-          ...t,
-          date: new Date(t.date)
-        })));
-      } catch (error) {
-        console.error('Erro ao carregar transações:', error);
-      }
+    if (!user) {
+      setTransactions([]);
+      setIsLoading(false);
+      return;
     }
-  }, []);
 
-  // Salvar transações no localStorage quando mudar
-  useEffect(() => {
-    if (transactions.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    setIsLoading(true);
+    
+    const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+    const q = query(
+      transactionsRef,
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newTransactions = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date,
+          result: data.result,
+          amount: data.amount,
+          profit: data.profit,
+          asset: data.asset,
+          currency: data.currency,
+          exchangeRate: data.exchangeRate,
+          createdAt: data.createdAt
+        } as Transaction;
+      });
+      
+      setTransactions(newTransactions);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Erro ao carregar transações:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Adicionar transação no Firestore
+  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    if (!user) {
+      throw new Error('Usuário não autenticado');
     }
-  }, [transactions]);
+
+    try {
+      const transactionsRef = collection(db, 'users', user.uid, 'transactions');
+      await addDoc(transactionsRef, {
+        ...transaction,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar transação:', error);
+      throw error;
+    }
+  };
+
+  // Remover transação do Firestore
+  const removeTransaction = async (id: string) => {
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    try {
+      const transactionRef = doc(db, 'users', user.uid, 'transactions', id);
+      await deleteDoc(transactionRef);
+    } catch (error) {
+      console.error('Erro ao remover transação:', error);
+      throw error;
+    }
+  };
 
   // Filtrar transações por período
   const filteredTransactions = useMemo(() => {
@@ -67,95 +133,53 @@ export function useTransactions() {
   const usdBalance = useMemo(() => {
     return filteredTransactions
       .filter(t => t.currency === 'USD')
-      .reduce((sum, t) => sum + t.netProfit, 0);
+      .reduce((sum, t) => sum + t.profit, 0);
   }, [filteredTransactions]);
 
   const brlBalance = useMemo(() => {
     return filteredTransactions
       .filter(t => t.currency === 'BRL')
-      .reduce((sum, t) => sum + t.netProfit, 0);
+      .reduce((sum, t) => sum + t.profit, 0);
   }, [filteredTransactions]);
 
   // Calcular métricas em tempo real (sempre em BRL) - baseado no período selecionado
   const metrics = useMemo((): Metrics => {
-    const wins = filteredTransactions.filter(t => t.type === 'win');
-    const losses = filteredTransactions.filter(t => t.type === 'loss');
+    const wins = filteredTransactions.filter(t => t.result === 'win');
+    const losses = filteredTransactions.filter(t => t.result === 'loss');
     
     // Converter todos os valores para BRL
     const totalInvested = filteredTransactions.reduce((sum, t) => {
-      const converted = convertCurrency(t.investment, t.currency, 'BRL', t.exchangeRate || exchangeRate);
+      const converted = convertCurrency(t.amount, t.currency, 'BRL', t.exchangeRate || exchangeRate);
       return sum + converted;
     }, 0);
     
-    const totalWithdrawn = filteredTransactions.reduce((sum, t) => {
-      if (!t.withdrawn) return sum;
-      const converted = convertCurrency(t.withdrawn, t.currency, 'BRL', t.exchangeRate || exchangeRate);
-      return sum + converted;
-    }, 0);
-    
-    // SALDO REAL: Soma de todos os netProfits (wins - losses)
-    // WIN: netProfit positivo (lucro), LOSS: netProfit negativo (prejuízo)
+    // SALDO REAL: Soma de todos os profits (wins - losses)
+    // WIN: profit positivo (lucro), LOSS: profit negativo (prejuízo)
     const realBalance = filteredTransactions.reduce((sum, t) => {
-      const converted = convertCurrency(t.netProfit, t.currency, 'BRL', exchangeRate);
+      const converted = convertCurrency(t.profit, t.currency, 'BRL', exchangeRate);
       return sum + converted;
     }, 0);
-    
-    const winRate = filteredTransactions.length > 0 
-      ? (wins.length / filteredTransactions.length) * 100 
-      : 0;
 
     return {
-      totalCycleProfit: realBalance, // Usando o saldo real
-      winRate,
-      currentBalance: realBalance, // Saldo atual é o saldo real do período
+      totalProfit: realBalance,
+      winRate: filteredTransactions.length > 0 ? (wins.length / filteredTransactions.length) * 100 : 0,
+      currentBalance: realBalance,
       totalInvested,
-      totalWithdrawn,
+      totalWithdrawn: 0, // Não usado mais com a nova estrutura
       winsCount: wins.length,
       lossesCount: losses.length
     };
   }, [filteredTransactions, exchangeRate]);
 
-  // Adicionar nova transação
-  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    let finalExchangeRate = transaction.exchangeRate;
+  // Função para formatar valores
+  const formatValue = (value: number, targetCurrency?: string) => {
+    const currency = targetCurrency || defaultCurrency || 'BRL';
     
-    // Se for USD e não tiver taxa, buscar a atual
-    if (transaction.currency === 'USD' && !finalExchangeRate) {
-      try {
-        finalExchangeRate = await getUSDToBRLRate();
-        setExchangeRate(finalExchangeRate);
-      } catch (error) {
-        console.error('Erro ao buscar cotação para nova transação:', error);
-        finalExchangeRate = exchangeRate;
-      }
+    if (currency === 'USD') {
+      return formatCurrency(value / exchangeRate, 'USD');
     }
-
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: crypto.randomUUID(),
-      date: new Date(transaction.date),
-      exchangeRate: finalExchangeRate
-    };
     
-    setTransactions(prev => [newTransaction, ...prev].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    ));
-  };
-
-  // Remover transação
-  const removeTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-  };
-
-  // Limpar todas as transações
-  const clearTransactions = () => {
-    setTransactions([]);
-    localStorage.removeItem(STORAGE_KEY);
-  };
-
-  // Função utilitária para formatar valores convertidos
-  const formatValue = (value: number, targetCurrency: 'BRL' | 'USD' = 'BRL') => {
-    return formatCurrency(value, targetCurrency);
+    return formatCurrency(value, 'BRL');
   };
 
   return {
@@ -164,14 +188,13 @@ export function useTransactions() {
     metrics,
     exchangeRate,
     isLoadingRate,
-    defaultCurrency,
-    selectedPeriod,
-    setSelectedPeriod,
+    isLoading,
     usdBalance,
     brlBalance,
+    selectedPeriod,
+    setSelectedPeriod,
     addTransaction,
     removeTransaction,
-    clearTransactions,
     formatValue
   };
 }

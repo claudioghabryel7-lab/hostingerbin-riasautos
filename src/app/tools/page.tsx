@@ -1,13 +1,102 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calculator, Settings, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calculator, Shield, Brain, Target, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { MartingaleCalculator } from '@/components/MartingaleCalculator';
+import { RiskManagement } from '@/components/RiskManagement';
+import { PatternAnalysis } from '@/components/PatternAnalysis';
+import { TradingStrategies } from '@/components/TradingStrategies';
+import { useTransactions } from '@/hooks/useTransactions';
+
+type ToolType = 'calculator' | 'risk' | 'patterns' | 'strategies';
+
+interface Tool {
+  id: ToolType;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+}
 
 export default function ToolsPage() {
+  const [activeTool, setActiveTool] = useState<ToolType | null>(null);
+  const { transactions } = useTransactions();
+
+  const tools: Tool[] = [
+    {
+      id: 'calculator',
+      name: 'Calculadora de Soros',
+      description: 'Calcule valores para estratégia Martingale',
+      icon: <Calculator className="h-5 w-5" />,
+      color: 'text-blue-400'
+    },
+    {
+      id: 'risk',
+      name: 'Gerenciamento de Risco',
+      description: 'Analise e controle seus riscos',
+      icon: <Shield className="h-5 w-5" />,
+      color: 'text-green-400'
+    },
+    {
+      id: 'patterns',
+      name: 'Análise de Padrões',
+      description: 'Identifique padrões no seu trading',
+      icon: <Brain className="h-5 w-5" />,
+      color: 'text-purple-400'
+    },
+    {
+      id: 'strategies',
+      name: 'Estratégias de Trading',
+      description: 'Estratégias com alta assertividade',
+      icon: <Target className="h-5 w-5" />,
+      color: 'text-orange-400'
+    }
+  ];
+
+  const renderActiveTool = () => {
+    switch (activeTool) {
+      case 'calculator':
+        return <MartingaleCalculator />;
+      case 'risk':
+        return <RiskManagement transactions={transactions} />;
+      case 'patterns':
+        return <PatternAnalysis transactions={transactions} />;
+      case 'strategies':
+        return <TradingStrategies transactions={transactions} />;
+      default:
+        return null;
+    }
+  };
+
+  const getActiveToolTitle = () => {
+    const tool = tools.find(t => t.id === activeTool);
+    return tool ? tool.name : 'Ferramentas';
+  };
+
+  const getActiveToolIcon = () => {
+    const tool = tools.find(t => t.id === activeTool);
+    return tool ? tool.icon : <TrendingUp className="h-5 w-5" />;
+  };
+
+  const getActiveToolColor = () => {
+    const tool = tools.find(t => t.id === activeTool);
+    return tool ? tool.color : 'text-white';
+  };
+
+  const handleToolClick = (toolId: ToolType) => {
+    console.log('Clicou na ferramenta:', toolId);
+    setActiveTool(toolId);
+  };
+
+  const handleBackClick = () => {
+    console.log('Clicou em voltar');
+    setActiveTool(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
       {/* Background Pattern */}
@@ -35,79 +124,128 @@ export default function ToolsPage() {
                 Ferramentas de Trading
               </h1>
               <p className="text-white/60 text-sm sm:text-base">
-                Calculadoras e utilitários para traders profissionais
+                Calculadoras e análises profissionais para traders
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* Tools Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Martingale Calculator */}
+        {/* Tools Content */}
+        {activeTool ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2"
+            transition={{ duration: 0.5 }}
           >
-            <Card className="glass-dark border-white/10 text-white">
+            <Card className="glass-dark border-white/10 h-full">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-                  <Calculator className="h-5 w-5" />
-                  Calculadora de Soros (Martingale)
+                <CardTitle className="text-white flex items-center gap-2">
+                  {getActiveToolIcon()}
+                  <span className={getActiveToolColor()}>{getActiveToolTitle()}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <MartingaleCalculator />
-              </CardContent>
-            </Card>
-          </motion.div>
+                <div className="space-y-4">
+                  {/* Back Button */}
+                  <Button
+                    variant="ghost"
+                    onClick={handleBackClick}
+                    className="text-white/60 hover:text-white mb-4"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar para Ferramentas
+                  </Button>
 
-          {/* Future Tools Placeholder */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            <Card className="glass-dark border-white/10 text-white opacity-50">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Gerenciamento de Risco
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-white/60">
-                  <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Em breve...</p>
-                  <p className="text-sm mt-2">Calculadora de gerenciamento de risco</p>
+                  {/* Active Tool Content */}
+                  <div className="max-h-[600px] overflow-y-auto">
+                    {renderActiveTool()}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+            {tools.map((tool, index) => (
+              <motion.div
+                key={tool.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Card 
+                  className="glass-dark border-white/10 cursor-pointer hover:border-white/20 transition-all h-full"
+                  onClick={() => handleToolClick(tool.id)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`p-3 rounded-lg bg-white/5 ${tool.color}`}>
+                        {tool.icon}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-white font-semibold text-lg">{tool.name}</h3>
+                        <p className="text-white/60 text-sm mt-1">{tool.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40 text-sm">Clique para acessar</span>
+                      <ArrowLeft className="h-4 w-4 text-white/40 rotate-180" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
+        {/* Quick Stats */}
+        {!activeTool && transactions.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8"
           >
-            <Card className="glass-dark border-white/10 text-white opacity-50">
+            <Card className="glass-dark border-white/10">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+                <CardTitle className="text-white flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Análise de Padrões
+                  Estatísticas Rápidas
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-white/60">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Em breve...</p>
-                  <p className="text-sm mt-2">Identificação de padrões de mercado</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="p-4 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-white">{transactions.length}</div>
+                    <div className="text-xs text-white/60">Total Operações</div>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-green-400">
+                      {transactions.filter(t => t.result === 'win').length}
+                    </div>
+                    <div className="text-xs text-white/60">Wins</div>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-red-400">
+                      {transactions.filter(t => t.result === 'loss').length}
+                    </div>
+                    <div className="text-xs text-white/60">Losses</div>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-400">
+                      {transactions.length > 0 
+                        ? ((transactions.filter(t => t.result === 'win').length / transactions.length) * 100).toFixed(1)
+                        : 0}%
+                    </div>
+                    <div className="text-xs text-white/60">Win Rate</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-        </div>
+        )}
       </div>
     </div>
   );
