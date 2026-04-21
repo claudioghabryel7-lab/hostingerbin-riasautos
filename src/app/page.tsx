@@ -101,25 +101,25 @@ export default function HomePage() {
                     <MetricCard
                       title="Lucro Total"
                       value={formatValue(metrics.totalProfit, defaultCurrency)}
-                      change={metrics.winRate}
+                      change={metrics.totalProfit}
                       isPositive={metrics.totalProfit >= 0}
                     />
                     <MetricCard
                       title="Win Rate"
                       value={`${metrics.winRate.toFixed(1)}%`}
-                      change={metrics.winRate}
+                      change={metrics.winRate - 50} // Mudança em relação à meta de 50%
                       isPositive={metrics.winRate >= 50}
                     />
                     <MetricCard
                       title="Total Ops"
                       value={`${transactions.length}`}
-                      change={transactions.length}
+                      change={0} // Total de ops não tem variação percentual
                       isPositive={transactions.length > 0}
                     />
                     <MetricCard
                       title="Saldo Atual"
                       value={formatValue(metrics.currentBalance, defaultCurrency)}
-                      change={metrics.currentBalance >= 0 ? metrics.winRate : -metrics.winRate}
+                      change={metrics.currentBalance}
                       isPositive={metrics.currentBalance >= 0}
                     />
                   </div>

@@ -162,7 +162,7 @@ export function useTransactions() {
 
     return {
       totalProfit: realBalance,
-      winRate: filteredTransactions.length > 0 ? (wins.length / filteredTransactions.length) * 100 : 0,
+      winRate: filteredTransactions.length > 0 ? Math.round((wins.length / filteredTransactions.length) * 100 * 10) / 10 : 0,
       currentBalance: realBalance,
       totalInvested,
       totalWithdrawn: 0, // Não usado mais com a nova estrutura
