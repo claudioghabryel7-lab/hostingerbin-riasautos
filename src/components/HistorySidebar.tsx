@@ -88,13 +88,24 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue, def
     const wins = transactions.filter(t => t.result === 'win').length;
     const losses = transactions.filter(t => t.result === 'loss').length;
     
-    // Calcular totalProfit e totalLoss convertendo para a moeda padrão
+    // Para stats diários, converter tudo para a moeda padrão para consistência
     const totalProfit = transactions
       .filter(t => t.result === 'win')
-      .reduce((sum, t) => sum + (t.currency === defaultCurrency ? t.profit : t.profit * (exchangeRate || 5.5)), 0);
+      .reduce((sum, t) => {
+        const profitInDefaultCurrency = t.currency === defaultCurrency 
+          ? t.profit 
+          : t.profit * (exchangeRate || 5.5);
+        return sum + profitInDefaultCurrency;
+      }, 0);
+      
     const totalLoss = transactions
       .filter(t => t.result === 'loss')
-      .reduce((sum, t) => sum + Math.abs(t.currency === defaultCurrency ? t.profit : t.profit * (exchangeRate || 5.5)), 0);
+      .reduce((sum, t) => {
+        const lossInDefaultCurrency = t.currency === defaultCurrency 
+          ? Math.abs(t.profit) 
+          : Math.abs(t.profit) * (exchangeRate || 5.5);
+        return sum + lossInDefaultCurrency;
+      }, 0);
 
     return { wins, losses, totalProfit, totalLoss };
   };
