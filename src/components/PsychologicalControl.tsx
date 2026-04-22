@@ -380,7 +380,7 @@ export function PsychologicalControl() {
   const [gameStats, setGameStats] = useState<Record<string, { played: number; completed: number; bestScore: number }>>({});
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const clickPositions = useRef<{ x: number; y: number; time: number }[]>([]);
 
   useEffect(() => {
@@ -680,6 +680,7 @@ export function PsychologicalControl() {
       const points = gameState.currentGame.points;
       const newScore = gameState.score + points;
       const newStreak = gameState.streak + 1;
+      const gameType = gameState.currentGame.type;
       
       setGameState(prev => ({
         ...prev,
@@ -694,10 +695,10 @@ export function PsychologicalControl() {
       // Atualizar estatísticas
       setGameStats(prev => ({
         ...prev,
-        [gameState.currentGame.type]: {
-          ...prev[gameState.currentGame.type],
-          completed: prev[gameState.currentGame.type]?.completed + 1 || 1,
-          bestScore: Math.max(prev[gameState.currentGame.type]?.bestScore || 0, points)
+        [gameType]: {
+          ...prev[gameType],
+          completed: prev[gameType]?.completed + 1 || 1,
+          bestScore: Math.max(prev[gameType]?.bestScore || 0, points)
         }
       }));
       
