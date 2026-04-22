@@ -64,7 +64,9 @@ export function useTransactions() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newTransactions = snapshot.docs.map(doc => {
         const data = doc.data();
-        return {
+        console.log('Firestore data:', data); // Debug log
+        
+        const transaction = {
           id: doc.id,
           date: data.date,
           result: data.result,
@@ -75,8 +77,12 @@ export function useTransactions() {
           exchangeRate: data.exchangeRate,
           createdAt: data.createdAt
         } as Transaction;
+        
+        console.log('Parsed transaction:', transaction); // Debug log
+        return transaction;
       });
       
+      console.log('All transactions:', newTransactions); // Debug log
       setTransactions(newTransactions);
       setIsLoading(false);
     }, (error) => {
@@ -175,10 +181,15 @@ export function useTransactions() {
   const formatValue = (value: number, targetCurrency?: string) => {
     const currency = targetCurrency || defaultCurrency || 'BRL';
     
+    console.log('formatValue called:', { value, targetCurrency, currency, exchangeRate });
+    
     if (currency === 'USD') {
-      return formatCurrency(value / exchangeRate, 'USD');
+      const convertedValue = value / exchangeRate;
+      console.log('Converting to USD:', { originalValue: value, exchangeRate, convertedValue });
+      return formatCurrency(convertedValue, 'USD');
     }
     
+    console.log('Keeping as BRL:', { value });
     return formatCurrency(value, 'BRL');
   };
 
