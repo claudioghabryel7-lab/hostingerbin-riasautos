@@ -171,13 +171,13 @@ export function useTransactions() {
     };
   }, [filteredTransactions, exchangeRate]);
 
-  // Função para formatar valores
+  // Função para formatar valores - SEM CONVERSÕES
   const formatValue = (value: number, targetCurrency?: string) => {
     const currency = targetCurrency || defaultCurrency || 'BRL';
     
+    // NÃO FAZER CONVERSÃO - apenas formatar o valor exato
     if (currency === 'USD') {
-      const convertedValue = value / exchangeRate;
-      return formatCurrency(convertedValue, 'USD');
+      return formatCurrency(value, 'USD');
     }
     
     return formatCurrency(value, 'BRL');
