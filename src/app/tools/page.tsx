@@ -10,9 +10,11 @@ import { MartingaleCalculator } from '@/components/MartingaleCalculator';
 import { RiskManagement } from '@/components/RiskManagement';
 import { PatternAnalysis } from '@/components/PatternAnalysis';
 import { TradingStrategies } from '@/components/TradingStrategies';
+import { PsychologicalControl } from '@/components/PsychologicalControl';
+import { TradingSimulation } from '@/components/TradingSimulation';
 import { useTransactions } from '@/hooks/useTransactions';
 
-type ToolType = 'calculator' | 'risk' | 'patterns' | 'strategies';
+type ToolType = 'calculator' | 'risk' | 'patterns' | 'strategies' | 'psychological' | 'simulation';
 
 interface Tool {
   id: ToolType;
@@ -54,6 +56,20 @@ export default function ToolsPage() {
       description: 'Estratégias com alta assertividade',
       icon: <Target className="h-5 w-5" />,
       color: 'text-orange-400'
+    },
+    {
+      id: 'psychological',
+      name: 'Controle Psicológico',
+      description: 'Treine sua mente para trading disciplinado',
+      icon: <Brain className="h-5 w-5" />,
+      color: 'text-pink-400'
+    },
+    {
+      id: 'simulation',
+      name: 'Simulação de Trading',
+      description: 'Simule 30 dias com estratégia Martingale',
+      icon: <TrendingUp className="h-5 w-5" />,
+      color: 'text-cyan-400'
     }
   ];
 
@@ -67,6 +83,10 @@ export default function ToolsPage() {
         return <PatternAnalysis transactions={transactions} />;
       case 'strategies':
         return <TradingStrategies transactions={transactions} />;
+      case 'psychological':
+        return <PsychologicalControl />;
+      case 'simulation':
+        return <TradingSimulation />;
       default:
         return null;
     }
