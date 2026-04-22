@@ -45,6 +45,12 @@ export function NewTransactionModal({ show, onClose, onAddTransaction, defaultCu
     const investment = parseFloat(form.investment.replace(',', '.'));
     const withdrawn = form.withdrawn ? parseFloat(form.withdrawn.replace(',', '.')) : 0;
     
+    // Debug logs
+    console.log('Form investment:', form.investment);
+    console.log('Parsed investment:', investment);
+    console.log('Form withdrawn:', form.withdrawn);
+    console.log('Parsed withdrawn:', withdrawn);
+    
     if (isNaN(investment) || investment <= 0) {
       alert('Valor de investimento inválido');
       return;
@@ -55,14 +61,23 @@ export function NewTransactionModal({ show, onClose, onAddTransaction, defaultCu
       return;
     }
 
-    const netProfit = transactionType === 'win' ? withdrawn - investment : -investment;
+    // Corrigir cálculo do profit
+    const profit = transactionType === 'win' ? withdrawn - investment : -investment;
+    
+    console.log('Transaction data:', {
+      date: form.date,
+      result: transactionType,
+      amount: investment,
+      profit: profit,
+      currency: form.currency
+    });
 
     onAddTransaction({
-      date: form.date, // Mudar para string
-      result: transactionType, // Mudar de type para result
-      amount: investment, // Mudar de investment para amount
-      profit: netProfit, // Mudar de netProfit para profit
-      asset: 'EUR/USD', // Adicionar asset padrão
+      date: form.date,
+      result: transactionType,
+      amount: investment, // Salvar o valor investido corretamente
+      profit: profit, // Salvar o lucro/prejuízo calculado
+      asset: 'EUR/USD',
       currency: form.currency
     });
 
