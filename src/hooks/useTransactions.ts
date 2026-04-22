@@ -156,18 +156,9 @@ export function useTransactions() {
       return sum + converted;
     }, 0);
     
-    // SALDO REAL: Soma de todos os profits (wins - losses) já na moeda correta
-    // WIN: profit positivo (lucro), LOSS: profit negativo (prejuízo)
-    const realBalance = filteredTransactions.reduce((sum, t) => {
-      // Se a transação já estiver na moeda padrão, usar o valor diretamente
-      // Se estiver em outra moeda, converter para a moeda padrão
-      if (t.currency === defaultCurrency) {
-        return sum + t.profit;
-      } else {
-        const converted = convertCurrency(t.profit, t.currency, defaultCurrency, t.exchangeRate || exchangeRate);
-        return sum + converted;
-      }
-    }, 0);
+    // SALDO REAL: Soma de todos os profits (wins - losses)
+    // Simples soma dos valores já na moeda correta
+    const realBalance = filteredTransactions.reduce((sum, t) => sum + t.profit, 0);
 
     return {
       totalProfit: realBalance,
