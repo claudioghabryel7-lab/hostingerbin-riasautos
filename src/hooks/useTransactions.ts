@@ -156,11 +156,17 @@ export function useTransactions() {
       return sum + converted;
     }, 0);
     
-    // SALDO REAL: Soma de todos os profits (wins - losses)
+    // SALDO REAL: Soma de todos os profits (wins - losses) já na moeda correta
     // WIN: profit positivo (lucro), LOSS: profit negativo (prejuízo)
     const realBalance = filteredTransactions.reduce((sum, t) => {
-      const converted = convertCurrency(t.profit, t.currency, 'BRL', exchangeRate);
-      return sum + converted;
+      // Se a transação já estiver na moeda padrão, usar o valor diretamente
+      // Se estiver em outra moeda, converter para a moeda padrão
+      if (t.currency === defaultCurrency) {
+        return sum + t.profit;
+      } else {
+        const converted = convertCurrency(t.profit, t.currency, defaultCurrency, t.exchangeRate || exchangeRate);
+        return sum + converted;
+      }
     }, 0);
 
     return {
