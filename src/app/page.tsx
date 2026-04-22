@@ -23,7 +23,7 @@ export default function HomePage() {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('all');
   
   const { defaultCurrency, isLoading: isLoadingCurrency, hasSelected } = useDefaultCurrency();
-  const { transactions, addTransaction, removeTransaction, metrics, isLoading, formatValue } = useTransactions();
+  const { transactions, addTransaction, removeTransaction, metrics, isLoading, formatValue, exchangeRate } = useTransactions();
 
   // Filtrar transações por período
   const filteredTransactions = transactions.filter((transaction: any) => {
@@ -228,6 +228,8 @@ export default function HomePage() {
           isOpen={showHistorySidebar}
           onClose={() => setShowHistorySidebar(false)}
           formatValue={formatValue}
+          defaultCurrency={defaultCurrency}
+          exchangeRate={exchangeRate}
         />
       </div>
     </SimpleAuthGuard>

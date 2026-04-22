@@ -13,9 +13,11 @@ interface HistorySidebarProps {
   isOpen: boolean;
   onClose: () => void;
   formatValue: (value: number, currency?: string) => string;
+  defaultCurrency: 'BRL' | 'USD';
+  exchangeRate: number;
 }
 
-export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: HistorySidebarProps) {
+export function HistorySidebar({ transactions, isOpen, onClose, formatValue, defaultCurrency, exchangeRate }: HistorySidebarProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
 
