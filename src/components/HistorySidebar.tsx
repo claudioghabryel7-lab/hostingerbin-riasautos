@@ -85,12 +85,14 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: H
   const getDayStats = (transactions: Transaction[]) => {
     const wins = transactions.filter(t => t.result === 'win').length;
     const losses = transactions.filter(t => t.result === 'loss').length;
+    
+    // Calcular totalProfit e totalLoss convertendo para a moeda padrão
     const totalProfit = transactions
       .filter(t => t.result === 'win')
-      .reduce((sum, t) => sum + t.profit, 0);
+      .reduce((sum, t) => sum + (t.currency === defaultCurrency ? t.profit : t.profit * (exchangeRate || 5.5)), 0);
     const totalLoss = transactions
       .filter(t => t.result === 'loss')
-      .reduce((sum, t) => sum + Math.abs(t.profit), 0);
+      .reduce((sum, t) => sum + Math.abs(t.currency === defaultCurrency ? t.profit : t.profit * (exchangeRate || 5.5)), 0);
 
     return { wins, losses, totalProfit, totalLoss };
   };
@@ -191,7 +193,7 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: H
                             <div>
                               <span className="text-white/60">Entrada:</span>
                               <span className="text-white ml-1">
-                                {formatValue(transaction.amount)}
+                                {formatValue(transaction.amount, transaction.currency)}
                               </span>
                             </div>
                             <div>
@@ -199,7 +201,7 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: H
                               <span className={`ml-1 ${
                                 transaction.result === 'win' ? 'text-green-400' : 'text-red-400'
                               }`}>
-                                {formatValue(transaction.profit)}
+                                {formatValue(transaction.profit, transaction.currency)}
                               </span>
                             </div>
                           </div>
@@ -254,13 +256,13 @@ export function HistorySidebar({ transactions, isOpen, onClose, formatValue }: H
                               </div>
                               <div>
                                 <div className="text-green-400 font-semibold">
-                                  {formatValue(stats.totalProfit)}
+                                  {formatValue(stats.totalProfit, defaultCurrency)}
                                 </div>
                                 <div className="text-xs text-white/60">Lucro</div>
                               </div>
                               <div>
                                 <div className="text-red-400 font-semibold">
-                                  {formatValue(-stats.totalLoss)}
+                                  {formatValue(-stats.totalLoss, defaultCurrency)}
                                 </div>
                                 <div className="text-xs text-white/60">Perda</div>
                               </div>
