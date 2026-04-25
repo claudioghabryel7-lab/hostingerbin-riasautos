@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calculator, Shield, Brain, Target, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calculator, Shield, Brain, Target, TrendingUp, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { MartingaleCalculator } from '@/components/MartingaleCalculator';
 import { RiskManagement } from '@/components/RiskManagement';
@@ -12,9 +12,10 @@ import { PatternAnalysis } from '@/components/PatternAnalysis';
 import { TradingStrategies } from '@/components/TradingStrategies';
 import { PsychologicalControl } from '@/components/PsychologicalControl';
 import { TradingSimulation } from '@/components/TradingSimulation';
+import { VirtualLinux } from '@/components/VirtualLinux';
 import { useTransactions } from '@/hooks/useTransactions';
 
-type ToolType = 'calculator' | 'risk' | 'patterns' | 'strategies' | 'psychological' | 'simulation';
+type ToolType = 'calculator' | 'risk' | 'patterns' | 'strategies' | 'psychological' | 'simulation' | 'linux';
 
 interface Tool {
   id: ToolType;
@@ -70,6 +71,13 @@ export default function ToolsPage() {
       description: 'Simule 30 dias com estratégia Martingale',
       icon: <TrendingUp className="h-5 w-5" />,
       color: 'text-cyan-400'
+    },
+    {
+      id: 'linux',
+      name: 'Virtual Linux',
+      description: 'Sistema Linux completo com 100+ comandos',
+      icon: <Terminal className="h-5 w-5" />,
+      color: 'text-yellow-400'
     }
   ];
 
@@ -87,6 +95,8 @@ export default function ToolsPage() {
         return <PsychologicalControl />;
       case 'simulation':
         return <TradingSimulation />;
+      case 'linux':
+        return <VirtualLinux />;
       default:
         return null;
     }
