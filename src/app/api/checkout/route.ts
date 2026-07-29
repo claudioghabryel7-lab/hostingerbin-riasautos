@@ -13,7 +13,7 @@ async function getOrderFromFirestore(orderId: string) {
     /* fallback below */
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || "obinarias-68350";
+  const projectId = process.env.FIREBASE_PROJECT_ID || "gestorfinan-88c9c";
   const res = await fetch(
     `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}`
   );

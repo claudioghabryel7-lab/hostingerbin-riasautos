@@ -1,7 +1,8 @@
 rules_version = '2';
 
-// App sem Firebase Auth: tudo no Firestore (contas, pedidos, cardápio, imagens).
-// Publique estas regras no Firebase Console para o site funcionar.
+// Fry Sushi — projeto gestorfinan-88c9c
+// Contas, cardápio, pedidos e imagens no Firestore.
+// Publique com: npm run firebase:rules
 service cloud.firestore {
   match /databases/{database}/documents {
     match /store/{docId} {
@@ -24,7 +25,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // legado
     match /admins/{uid} {
       allow read, write: if true;
     }

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "firebase:rules": "node scripts/deploy-firestore-rules.js",
+    "postrules": "npm run firebase:rules"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
@@ -30,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "firebase-tools": "^14.27.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

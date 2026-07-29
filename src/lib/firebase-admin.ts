@@ -4,6 +4,10 @@ import { getAuth } from "firebase-admin/auth";
 
 let adminApp: App | null = null;
 
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "gestorfinan-88c9c";
+const STORAGE_BUCKET =
+  process.env.FIREBASE_STORAGE_BUCKET || "gestorfinan-88c9c.firebasestorage.app";
+
 export function getAdminApp() {
   if (adminApp) return adminApp;
   if (getApps().length) {
@@ -11,25 +15,24 @@ export function getAdminApp() {
     return adminApp;
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || "obinarias-68350";
   const sa = process.env.FIREBASE_SERVICE_ACCOUNT;
 
   try {
     if (sa) {
       adminApp = initializeApp({
         credential: cert(JSON.parse(sa)),
-        projectId,
-        storageBucket: "obinarias-68350.firebasestorage.app",
+        projectId: PROJECT_ID,
+        storageBucket: STORAGE_BUCKET,
       });
     } else {
       adminApp = initializeApp({
         credential: applicationDefault(),
-        projectId,
-        storageBucket: "obinarias-68350.firebasestorage.app",
+        projectId: PROJECT_ID,
+        storageBucket: STORAGE_BUCKET,
       });
     }
   } catch {
-    adminApp = initializeApp({ projectId });
+    adminApp = initializeApp({ projectId: PROJECT_ID });
   }
 
   return adminApp;

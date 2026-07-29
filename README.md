@@ -1,26 +1,51 @@
 # Fry Sushi (Goiânia)
 
-Site Next.js de delivery de sushi frito. **Tudo fica no Firestore** (contas, cardápio, pedidos, imagens em base64). Sem Firebase Authentication.
+Next.js + Firebase projeto **`gestorfinan-88c9c`** (Auth e Firestore ativos no console).
 
-## Importante: regras do banco
+Contas, cardápio, pedidos e imagens ficam no **Firestore**. Login do site usa a coleção `users` (sem depender do Authenticator do Firebase no fluxo do cliente).
 
-No Firebase Console → Firestore → Rules, publique o arquivo `firestore.rules` deste repositório. Sem isso aparece **Missing or insufficient permissions**.
+## Config Firebase (já no código)
 
-## Contas
+```js
+projectId: "gestorfinan-88c9c"
+```
 
-- Cliente: `/entrar` (cadastro/login gravado na coleção `users`)
-- Colaborador: `/admin/login` (role `collaborator` no Firestore)
-- Primeiro colaborador não precisa de código; os próximos usam `NEXT_PUBLIC_ADMIN_INVITE` (padrão `frysushi-admin`)
+## Publicar regras (obrigatório na 1ª vez)
 
-## Imagens
+### Opção A — Console (rápido)
+1. [Firebase Console](https://console.firebase.google.com/project/gestorfinan-88c9c/firestore/rules)
+2. Cole o conteúdo de `firestore.rules`
+3. Publish
 
-Uploads no painel são comprimidos e salvos na coleção `images` + campo `imageUrl` do item (data URL no banco).
+### Opção B — CLI (para o agente atualizar sozinho depois)
+No seu PC:
 
-## Mercado Pago
+```bash
+npx firebase login:ci
+```
 
-Configure `.env.local` a partir de `.env.example`.
+Cole o token em `.env.local`:
+
+```
+FIREBASE_TOKEN=1//seu_token
+```
+
+Depois, neste repo:
+
+```bash
+npm run firebase:rules
+```
+
+Com o `FIREBASE_TOKEN` configurado no ambiente do agente, a cada alteração em `firestore.rules` o deploy pode ser feito com esse comando.
+
+## Scripts
 
 ```bash
 npm install
 npm run dev
+npm run firebase:rules   # publica regras no gestorfinan-88c9c
 ```
+
+## Mercado Pago
+
+Copie `.env.example` → `.env.local` e preencha as chaves.

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "obinarias-68350.firebasestorage.app",
+        hostname: "gestorfinan-88c9c.firebasestorage.app",
       },
       {
         protocol: "https",
