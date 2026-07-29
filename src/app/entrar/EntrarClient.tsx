@@ -22,7 +22,7 @@ export default function EntrarClient() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next");
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -30,7 +30,6 @@ export default function EntrarClient() {
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -42,10 +41,10 @@ export default function EntrarClient() {
   }, [profile]);
 
   useEffect(() => {
-    if (!loading && user && next === "checkout") {
-      router.replace("/");
+    if (!loading && user && isAdmin) {
+      router.replace("/admin");
     }
-  }, [loading, user, next, router]);
+  }, [loading, user, isAdmin, router]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,14 +53,24 @@ export default function EntrarClient() {
     try {
       if (mode === "login") {
         const res = await login(email, password);
-        if (res.isAdmin && next !== "checkout") {
+        if (res.isAdmin) {
           router.push("/admin");
           return;
         }
+        router.push("/");
       } else {
-        await registerCustomer({ email, password, name, phone });
+        if (!address.trim()) {
+          throw new Error("Informe o endereço para criar a conta e ganhar 10% OFF.");
+        }
+        await registerCustomer({
+          email,
+          password,
+          name,
+          phone,
+          address,
+        });
+        router.push("/");
       }
-      if (next === "checkout") router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha na autenticação");
     } finally {
@@ -73,15 +82,18 @@ export default function EntrarClient() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    setSaved(false);
     try {
+      if (!address.trim()) throw new Error("Informe o endereço.");
       await updateCustomerProfile({
         name,
         phone,
         address,
         city: "Goiânia",
       });
-      setSaved(true);
+      if (!profile?.welcomeCouponClaimed && !profile?.couponPercent) {
+        sessionStorage.setItem("frysushi_welcome_coupon", "10");
+      }
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar");
     } finally {
@@ -97,7 +109,7 @@ export default function EntrarClient() {
     );
   }
 
-  if (user) {
+  if (user && !isAdmin) {
     return (
       <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
         <div className="pointer-events-none absolute inset-0 pattern-overlay" />
@@ -113,24 +125,28 @@ export default function EntrarClient() {
             <div>
               <p className="font-display text-2xl">Minha conta</p>
               <p className="text-sm text-[var(--rice-dim)]">{user.email}</p>
+              {profile?.couponPercent ? (
+                <p className="mt-1 text-xs text-emerald-300">
+                  Cupom ativo: {profile.couponPercent}% OFF
+                </p>
+              ) : null}
             </div>
           </div>
 
           <form onSubmit={saveProfile} className="space-y-3">
-            <Field label="Nome" value={name} onChange={setName} />
+            <Field label="Nome" value={name} onChange={setName} required />
             <Field
               label="Telefone"
               value={phone}
               onChange={(v) => setPhone(formatPhone(v))}
+              required
             />
             <Field
               label="Endereço em Goiânia"
               value={address}
               onChange={setAddress}
+              required
             />
-            {saved && (
-              <p className="text-sm text-emerald-300">Dados salvos.</p>
-            )}
             {error && <p className="text-sm text-amber-200">{error}</p>}
             <Button className="w-full" disabled={busy}>
               Salvar dados
@@ -138,19 +154,15 @@ export default function EntrarClient() {
           </form>
 
           <div className="mt-5 flex flex-col gap-2">
-            {isAdmin && (
-              <Link href="/admin">
-                <Button variant="secondary" className="w-full">
-                  Abrir painel do colaborador
-                </Button>
-              </Link>
-            )}
             <Link href="/" className="text-center text-sm text-[var(--salmon)]">
               Voltar ao cardápio
             </Link>
             <button
               className="text-sm text-[var(--rice-dim)] underline"
-              onClick={() => logout()}
+              onClick={async () => {
+                await logout();
+                router.push("/");
+              }}
             >
               Sair
             </button>
@@ -175,21 +187,34 @@ export default function EntrarClient() {
           <div>
             <p className="font-display text-3xl">Fry Sushi</p>
             <p className="text-sm text-[var(--rice-dim)]">
-              {next === "checkout"
-                ? "Entre para finalizar o pedido"
+              {mode === "register"
+                ? "Crie sua conta e ganhe 10% OFF"
                 : "Login do cliente"}
             </p>
           </div>
         </div>
 
+        {mode === "register" && (
+          <div className="mb-4 rounded-xl bg-emerald-500/15 px-3 py-2 text-sm text-emerald-200">
+            Ao se cadastrar, sua conta recebe <strong>10% de desconto</strong>{" "}
+            automaticamente nos pedidos.
+          </div>
+        )}
+
         <form onSubmit={onSubmit} className="space-y-3">
           {mode === "register" && (
             <>
-              <Field label="Nome" value={name} onChange={setName} required />
+              <Field label="Nome completo" value={name} onChange={setName} required />
               <Field
                 label="Telefone / WhatsApp"
                 value={phone}
                 onChange={(v) => setPhone(formatPhone(v))}
+                required
+              />
+              <Field
+                label="Endereço em Goiânia"
+                value={address}
+                onChange={setAddress}
                 required
               />
             </>
@@ -221,7 +246,7 @@ export default function EntrarClient() {
               ? "Aguarde..."
               : mode === "login"
                 ? "Entrar"
-                : "Criar conta"}
+                : "Criar conta e ganhar 10% OFF"}
           </Button>
         </form>
 

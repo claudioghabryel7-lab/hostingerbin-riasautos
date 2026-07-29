@@ -6,15 +6,17 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   query,
   orderBy,
+  increment,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { fileToDbImage, saveImageToDb } from "@/lib/db-auth";
 import { DEFAULT_MENU, DEFAULT_SETTINGS } from "@/data/defaults";
-import type { MenuItem, Order, OrderStatus, StoreSettings } from "@/types";
+import type { Coupon, MenuItem, Order, OrderStatus, Review, StoreSettings } from "@/types";
 
 export const SETTINGS_PATH = "store/settings";
 
@@ -163,6 +165,10 @@ export async function updateMenuItem(id: string, data: Partial<MenuItem>) {
   });
 }
 
+export async function deleteMenuItem(id: string) {
+  await deleteDoc(doc(db, "menuItems", id));
+}
+
 /** Comprime e grava a imagem no Firestore (sem Storage / sem Auth). */
 export async function uploadImage(file: File, folder = "menu") {
   const dataUrl = await fileToDbImage(file);
@@ -240,10 +246,143 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
 }
 
 export async function markOrderPaid(id: string, mpPaymentId: string) {
-  await updateDoc(doc(db, "orders", id), {
+  const orderRef = doc(db, "orders", id);
+  const snap = await getDoc(orderRef);
+  await updateDoc(orderRef, {
     status: "received",
     paymentStatus: "approved",
     mpPaymentId,
     updatedAt: Date.now(),
   });
+  if (snap.exists()) {
+    const order = snap.data() as Order;
+    await incrementMenuOrderCounts(order.items || []);
+  }
+}
+
+export async function incrementMenuOrderCounts(
+  items: { id: string; quantity: number }[]
+) {
+  await Promise.all(
+    items
+      .filter((i) => i.id && !String(i.id).startsWith("local-"))
+      .map((i) =>
+        updateDoc(doc(db, "menuItems", i.id), {
+          orderCount: increment(i.quantity || 1),
+          updatedAt: Date.now(),
+        }).catch(() => undefined)
+      )
+  );
+}
+
+export async function confirmCustomerDelivery(orderId: string) {
+  await updateDoc(doc(db, "orders", orderId), {
+    customerConfirmedDelivery: true,
+    status: "completed",
+    updatedAt: Date.now(),
+  });
+}
+
+export async function createReview(data: Omit<Review, "id" | "createdAt" | "visible">) {
+  const refDoc = await addDoc(collection(db, "reviews"), {
+    ...data,
+    visible: true,
+    createdAt: Date.now(),
+  });
+  await updateDoc(doc(db, "orders", data.orderId), {
+    reviewed: true,
+    updatedAt: Date.now(),
+  });
+  return refDoc.id;
+}
+
+export function subscribeReviews(cb: (reviews: Review[]) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, "reviews"), orderBy("createdAt", "desc")),
+    (snap) => {
+      cb(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Review))
+          .filter((r) => r.visible !== false)
+          .slice(0, 12)
+      );
+    },
+    () => cb([])
+  );
+}
+
+export async function createCoupon(data: Omit<Coupon, "id" | "createdAt">) {
+  const refDoc = await addDoc(collection(db, "coupons"), {
+    ...data,
+    createdAt: Date.now(),
+  });
+  if (data.userId) {
+    await updateDoc(doc(db, "users", data.userId), {
+      couponPercent: data.percent,
+      updatedAt: Date.now(),
+    });
+  }
+  return refDoc.id;
+}
+
+export function subscribeCoupons(cb: (coupons: Coupon[]) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, "coupons"), orderBy("createdAt", "desc")),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Coupon))),
+    () => cb([])
+  );
+}
+
+export function subscribeUsers(cb: (users: { id: string; email: string; name: string; phone: string; couponPercent?: number }[]) => void): Unsubscribe {
+  return onSnapshot(
+    collection(db, "users"),
+    (snap) => {
+      cb(
+        snap.docs
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              email: String(data.email || ""),
+              name: String(data.name || ""),
+              phone: String(data.phone || ""),
+              couponPercent: data.couponPercent as number | undefined,
+              role: data.role as string | undefined,
+            };
+          })
+          .filter((u) => u.role !== "collaborator" && u.email)
+      );
+    },
+    () => cb([])
+  );
+}
+
+export function rememberGuestOrder(orderId: string, guestToken: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = localStorage.getItem("frysushi_guest_orders");
+    const list: { orderId: string; guestToken: string }[] = raw
+      ? JSON.parse(raw)
+      : [];
+    list.unshift({ orderId, guestToken });
+    localStorage.setItem(
+      "frysushi_guest_orders",
+      JSON.stringify(list.slice(0, 20))
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getGuestTokenForOrder(orderId: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("frysushi_guest_orders");
+    const list: { orderId: string; guestToken: string }[] = raw
+      ? JSON.parse(raw)
+      : [];
+    return list.find((x) => x.orderId === orderId)?.guestToken || null;
+  } catch {
+    return null;
+  }
 }

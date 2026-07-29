@@ -6,12 +6,13 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import {
   createMenuItem,
+  deleteMenuItem,
   ensureStoreSeeded,
   subscribeMenu,
   updateMenuItem,
   uploadImage,
 } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatPriceBR, maskPriceInput, parsePriceBR } from "@/lib/utils";
 import {
   CATEGORY_LABELS,
   type MenuCategory,
@@ -32,6 +33,7 @@ const EMPTY = {
 export function AdminMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [form, setForm] = useState(EMPTY);
+  const [priceText, setPriceText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,29 +50,28 @@ export function AdminMenuPage() {
       const url = await uploadImage(file, "menu");
       setForm((f) => ({ ...f, imageUrl: url }));
     } catch (e) {
-      alert(
-        e instanceof Error
-          ? e.message
-          : "Falha no upload. Verifique as regras do Firebase Storage."
-      );
+      alert(e instanceof Error ? e.message : "Falha no upload da imagem.");
     } finally {
       setUploading(false);
     }
   };
 
   const save = async () => {
-    if (!form.name.trim() || form.price <= 0) {
-      alert("Nome e preço são obrigatórios.");
+    const price = parsePriceBR(priceText);
+    if (!form.name.trim() || price <= 0) {
+      alert("Nome e preço são obrigatórios. Ex.: 32,90");
       return;
     }
     setSaving(true);
     try {
+      const payload = { ...form, price };
       if (editingId) {
-        await updateMenuItem(editingId, form);
+        await updateMenuItem(editingId, payload);
       } else {
-        await createMenuItem(form);
+        await createMenuItem({ ...payload, orderCount: 0 });
       }
       setForm(EMPTY);
+      setPriceText("");
       setEditingId(null);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erro ao salvar");
@@ -91,7 +92,22 @@ export function AdminMenuPage() {
       featured: !!item.featured,
       sortOrder: item.sortOrder,
     });
+    setPriceText(formatPriceBR(item.price));
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const remove = async (item: MenuItem) => {
+    if (!confirm(`Excluir "${item.name}" do cardápio?`)) return;
+    try {
+      await deleteMenuItem(item.id);
+      if (editingId === item.id) {
+        setEditingId(null);
+        setForm(EMPTY);
+        setPriceText("");
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao excluir");
+    }
   };
 
   return (
@@ -99,8 +115,7 @@ export function AdminMenuPage() {
       <div className="mb-6">
         <h1 className="font-display text-3xl">Cardápio</h1>
         <p className="mt-1 text-[var(--rice-dim)]">
-          Suba foto, nome e preço — aparece na loja na hora. Imagens são
-          100% editáveis por você.
+          Adicione, edite ou exclua itens. Preço no formato brasileiro (ex.: 32,90).
         </p>
       </div>
 
@@ -139,16 +154,19 @@ export function AdminMenuPage() {
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block text-[var(--rice-dim)]">Preço</span>
-            <input
-              type="number"
-              step="0.01"
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
-              value={form.price}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, price: Number(e.target.value) }))
-              }
-            />
+            <span className="mb-1 block text-[var(--rice-dim)]">
+              Preço (R$) — use vírgula
+            </span>
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <span className="text-[var(--rice-dim)]">R$</span>
+              <input
+                inputMode="numeric"
+                placeholder="0,00"
+                className="w-full bg-transparent outline-none"
+                value={priceText}
+                onChange={(e) => setPriceText(maskPriceInput(e.target.value))}
+              />
+            </div>
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-[var(--rice-dim)]">Categoria</span>
@@ -189,7 +207,7 @@ export function AdminMenuPage() {
             />
             Disponível
           </label>
-          <div className="flex gap-2 sm:col-span-2">
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
             <Button onClick={save} disabled={saving || uploading}>
               {editingId ? "Atualizar item" : "Adicionar ao cardápio"}
             </Button>
@@ -199,6 +217,7 @@ export function AdminMenuPage() {
                 onClick={() => {
                   setEditingId(null);
                   setForm(EMPTY);
+                  setPriceText("");
                 }}
               >
                 Cancelar
@@ -243,6 +262,9 @@ export function AdminMenuPage() {
                   }
                 >
                   {item.available ? "Esgotar" : "Reativar"}
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => remove(item)}>
+                  Excluir
                 </Button>
               </div>
             </div>

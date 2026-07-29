@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DbImage } from "@/components/ui/DbImage";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { subscribeOrder } from "@/lib/store";
-import { formatCurrency, orderStatusStep } from "@/lib/utils";
+import { DbImage } from "@/components/ui/DbImage";
+import { Button } from "@/components/ui/button";
 import {
-  ORDER_STATUS_LABELS,
-  type Order,
-} from "@/types";
+  confirmCustomerDelivery,
+  createReview,
+  getGuestTokenForOrder,
+  incrementMenuOrderCounts,
+  subscribeOrder,
+} from "@/lib/store";
+import { formatCurrency, orderStatusStep } from "@/lib/utils";
+import { ORDER_STATUS_LABELS, type Order } from "@/types";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -36,6 +40,10 @@ export function OrderTracker({
 }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [reviewDone, setReviewDone] = useState(false);
 
   useEffect(() => {
     return subscribeOrder(orderId, setOrder);
@@ -60,6 +68,7 @@ export function OrderTracker({
           mpPaymentId: data.paymentId ? String(data.paymentId) : null,
           updatedAt: Date.now(),
         });
+        await incrementMenuOrderCounts(order.items || []);
       }
       return data;
     };
@@ -69,7 +78,7 @@ export function OrderTracker({
       try {
         await confirmPayment();
       } catch {
-        /* polling below */
+        /* polling */
       } finally {
         if (!cancelled) setConfirming(false);
       }
@@ -97,10 +106,61 @@ export function OrderTracker({
     );
   }
 
+  const guestOk =
+    !order.isGuest ||
+    !order.guestToken ||
+    getGuestTokenForOrder(orderId) === order.guestToken;
+
   const step = orderStatusStep(order.status);
   const rejected = order.status === "rejected" || order.status === "cancelled";
   const steps =
     order.fulfillment === "pickup" ? STEPS_PICKUP : STEPS_DELIVERY;
+
+  const canConfirmDelivery =
+    guestOk &&
+    !order.customerConfirmedDelivery &&
+    ["out_for_delivery", "ready_for_pickup", "preparing", "received"].includes(
+      order.status
+    ) &&
+    order.paymentStatus === "approved";
+
+  const canReview =
+    guestOk &&
+    (order.customerConfirmedDelivery || order.status === "completed") &&
+    !order.reviewed &&
+    !reviewDone;
+
+  const onConfirmDelivery = async () => {
+    setBusy(true);
+    try {
+      await confirmCustomerDelivery(orderId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onReview = async () => {
+    if (!comment.trim()) {
+      alert("Escreva um comentário curto.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createReview({
+        orderId,
+        customerName: order.customer.name,
+        rating,
+        comment: comment.trim(),
+      });
+      setReviewDone(true);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao avaliar");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen px-4 py-10">
@@ -110,7 +170,7 @@ export function OrderTracker({
           href="/"
           className="font-display text-2xl text-[var(--rice)] hover:text-[var(--salmon)]"
         >
-          Frysuroll
+          Fry Sushi
         </Link>
 
         <motion.div
@@ -118,7 +178,10 @@ export function OrderTracker({
           animate={{ opacity: 1, y: 0 }}
           className="glass-panel mt-8 rounded-3xl p-6"
         >
-          <p className="text-sm text-[var(--rice-dim)]">Pedido #{order.id.slice(0, 8)}</p>
+          <p className="text-sm text-[var(--rice-dim)]">
+            Pedido #{order.id.slice(0, 8)}
+            {order.isGuest ? " · pedido rápido" : ""}
+          </p>
           <h1 className="font-display mt-2 text-3xl">
             {rejected
               ? "Pedido recusado"
@@ -162,19 +225,32 @@ export function OrderTracker({
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center gap-3">
                 <div className="relative size-12 overflow-hidden rounded-lg">
-                  <DbImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
+                  <DbImage
+                    src={item.imageUrl}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">
                     {item.quantity}x {item.name}
                   </p>
                 </div>
-                <p className="text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                <p className="text-sm">
+                  {formatCurrency(item.price * item.quantity)}
+                </p>
               </div>
             ))}
           </div>
 
           <div className="mt-6 space-y-1 text-sm">
+            {(order.discountAmount || 0) > 0 && (
+              <div className="flex justify-between text-emerald-300">
+                <span>Desconto</span>
+                <span>-{formatCurrency(order.discountAmount || 0)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-[var(--rice-dim)]">
               <span>Entrega</span>
               <span>{formatCurrency(order.deliveryFee)}</span>
@@ -193,6 +269,61 @@ export function OrderTracker({
             {order.customer.neighborhood && <p>{order.customer.neighborhood}</p>}
             <p className="mt-1">{order.customer.phone}</p>
           </div>
+
+          {canConfirmDelivery && (
+            <div className="mt-6 space-y-2">
+              <p className="text-sm text-[var(--rice-dim)]">
+                Recebeu o pedido? Confirme a entrega para avaliar.
+              </p>
+              <Button
+                className="w-full"
+                disabled={busy}
+                onClick={onConfirmDelivery}
+              >
+                Confirmar que recebi o pedido
+              </Button>
+            </div>
+          )}
+
+          {order.customerConfirmedDelivery && !canReview && !reviewDone && (
+            <p className="mt-6 text-sm text-emerald-300">
+              Entrega confirmada. Obrigado!
+            </p>
+          )}
+
+          {canReview && (
+            <div className="mt-6 space-y-3 border-t border-white/8 pt-6">
+              <h2 className="font-display text-xl">Avalie seu pedido</h2>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setRating(n)}
+                    className={`text-2xl ${n <= rating ? "text-amber-300" : "text-white/20"}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm"
+                rows={3}
+                placeholder="Conte como foi..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <Button className="w-full" disabled={busy} onClick={onReview}>
+                Enviar avaliação
+              </Button>
+            </div>
+          )}
+
+          {(reviewDone || order.reviewed) && (
+            <p className="mt-6 text-sm text-emerald-300">
+              Avaliação enviada — aparece na página inicial. Obrigado!
+            </p>
+          )}
         </motion.div>
       </div>
     </div>

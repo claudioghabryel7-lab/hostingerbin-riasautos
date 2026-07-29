@@ -29,6 +29,7 @@ export interface MenuItem {
   available: boolean;
   featured?: boolean;
   sortOrder: number;
+  orderCount?: number;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -61,6 +62,8 @@ export interface UserProfile {
   complement?: string;
   neighborhood?: string;
   city?: string;
+  couponPercent?: number;
+  welcomeCouponClaimed?: boolean;
   createdAt: number;
   updatedAt?: number;
 }
@@ -79,24 +82,52 @@ export interface StoreSettings {
   logoUrl: string;
   accentNote?: string;
   pickupAddress?: string;
+  signupCouponPercent?: number;
 }
 
 export interface Order {
   id: string;
   userId?: string;
+  guestToken?: string;
+  isGuest?: boolean;
   customer: CustomerInfo;
   fulfillment: FulfillmentType;
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;
+  discountPercent?: number;
+  discountAmount?: number;
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   mpPreferenceId?: string;
   mpPaymentId?: string;
   refundId?: string;
+  customerConfirmedDelivery?: boolean;
+  reviewed?: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Review {
+  id: string;
+  orderId: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  createdAt: number;
+  visible: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  percent: number;
+  userId?: string;
+  userEmail?: string;
+  note?: string;
+  active: boolean;
+  createdAt: number;
 }
 
 export interface AdminUser {

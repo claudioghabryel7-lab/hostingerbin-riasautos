@@ -30,6 +30,7 @@ interface AuthValue {
     password: string;
     name: string;
     phone: string;
+    address: string;
   }) => Promise<void>;
   registerAdmin: (data: {
     email: string;
@@ -53,6 +54,8 @@ function toProfile(account: {
   complement?: string;
   neighborhood?: string;
   city?: string;
+  couponPercent?: number;
+  welcomeCouponClaimed?: boolean;
   createdAt: number;
   updatedAt?: number;
 }): UserProfile {
@@ -65,6 +68,8 @@ function toProfile(account: {
     complement: account.complement,
     neighborhood: account.neighborhood,
     city: account.city || "Goiânia",
+    couponPercent: account.couponPercent,
+    welcomeCouponClaimed: account.welcomeCouponClaimed,
     createdAt: account.createdAt,
     updatedAt: account.updatedAt,
   };
@@ -92,7 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: p.email,
           displayName: p.name,
         });
-        setProfile(p);
+        setProfile(
+          toProfile({
+            ...restored.account,
+            couponPercent: restored.account.couponPercent,
+            welcomeCouponClaimed: restored.account.welcomeCouponClaimed,
+          })
+        );
         setIsAdmin(restored.account.role === "collaborator");
       } catch {
         clearSession();
@@ -121,15 +132,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       name: string;
       phone: string;
+      address: string;
     }) => {
+      if (!data.address?.trim()) {
+        throw new Error("Informe seu endereço em Goiânia para criar a conta.");
+      }
       const { account } = await registerAccount({
         ...data,
         role: "customer",
+        address: data.address,
       });
-      const p = toProfile(account);
+      // Cupom de boas-vindas 10% na conta
+      const { updateDoc, doc } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      await updateDoc(doc(db, "users", account.uid), {
+        couponPercent: 10,
+        welcomeCouponClaimed: true,
+        updatedAt: Date.now(),
+      });
+      const p = toProfile({
+        ...account,
+        couponPercent: 10,
+        welcomeCouponClaimed: true,
+      });
       setUser({ uid: p.uid, email: p.email, displayName: p.name });
       setProfile(p);
       setIsAdmin(false);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("frysushi_welcome_coupon", "10");
+      }
     },
     []
   );

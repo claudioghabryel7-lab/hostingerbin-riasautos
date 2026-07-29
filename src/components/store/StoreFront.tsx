@@ -23,6 +23,7 @@ import {
   createOrder,
   ensureStoreSeeded,
   subscribeMenu,
+  subscribeReviews,
   subscribeSettings,
 } from "@/lib/store";
 import { formatCurrency, formatPhone, cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ import {
   type FulfillmentType,
   type MenuCategory,
   type MenuItem,
+  type Review,
   type StoreSettings,
 } from "@/types";
 import { DEFAULT_SETTINGS } from "@/data/defaults";
@@ -44,19 +46,43 @@ const CATEGORIES: MenuCategory[] = [
 ];
 
 export function StoreFront() {
+  const router = useRouter();
   const [settings, setSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [activeCategory, setActiveCategory] = useState<MenuCategory | "todos">(
     "todos"
   );
   const [selected, setSelected] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showBanner, setShowBanner] = useState(false);
+  const [couponToast, setCouponToast] = useState(false);
   const cart = useCart();
   const { user, profile, isAdmin, logout } = useAuth();
 
   useEffect(() => {
+    if (isAdmin) router.replace("/admin");
+  }, [isAdmin, router]);
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("frysushi_banner_closed")) {
+        setShowBanner(true);
+      }
+      if (sessionStorage.getItem("frysushi_welcome_coupon")) {
+        setCouponToast(true);
+        sessionStorage.removeItem("frysushi_welcome_coupon");
+        setTimeout(() => setCouponToast(false), 8000);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     let unsubSettings = () => {};
     let unsubMenu = () => {};
+    let unsubReviews = () => {};
     (async () => {
       await ensureStoreSeeded();
       unsubSettings = subscribeSettings(setSettings);
@@ -64,15 +90,26 @@ export function StoreFront() {
         setMenu(items);
         setLoading(false);
       }, true);
+      unsubReviews = subscribeReviews(setReviews);
     })();
     return () => {
       unsubSettings();
       unsubMenu();
+      unsubReviews();
     };
   }, []);
 
   const featured = useMemo(
     () => menu.filter((m) => m.featured).slice(0, 4),
+    [menu]
+  );
+
+  const mostOrdered = useMemo(
+    () =>
+      [...menu]
+        .filter((m) => (m.orderCount || 0) > 0)
+        .sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0))
+        .slice(0, 4),
     [menu]
   );
 
@@ -83,9 +120,51 @@ export function StoreFront() {
 
   const wa = settings.phone.replace(/\D/g, "");
 
+  if (isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[var(--rice-dim)]">
+        Redirecionando ao painel...
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen pb-28">
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
+
+      {showBanner && !user && (
+        <div className="relative z-50 border-b border-[var(--salmon)]/40 bg-[var(--salmon)] text-[var(--ink)]">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 text-sm font-semibold">
+            <p>
+              Cadastre-se e sua conta recebe{" "}
+              <strong>10% OFF</strong> em todos os pedidos!
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/entrar"
+                className="rounded-full bg-[var(--ink)] px-3 py-1 text-xs text-[var(--rice)]"
+              >
+                Quero o cupom
+              </Link>
+              <button
+                aria-label="Fechar"
+                onClick={() => {
+                  setShowBanner(false);
+                  localStorage.setItem("frysushi_banner_closed", "1");
+                }}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {couponToast && (
+        <div className="fixed bottom-24 left-1/2 z-[80] w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-black shadow-xl">
+          Parabéns! Sua conta ganhou <strong>10% OFF</strong> em todos os pedidos.
+        </div>
+      )}
 
       <header className="sticky top-0 z-40 border-b border-white/8 bg-[color-mix(in_oklab,var(--ink)_78%,transparent)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
@@ -141,14 +220,11 @@ export function StoreFront() {
             </nav>
             {user ? (
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <Link
-                    href="/admin"
-                    className="hidden rounded-full bg-white/8 px-3 py-1.5 text-xs sm:inline"
-                  >
-                    Colaborador
-                  </Link>
-                )}
+                {profile?.couponPercent ? (
+                  <span className="hidden rounded-full bg-emerald-500/20 px-2 py-1 text-[10px] text-emerald-200 sm:inline">
+                    {profile.couponPercent}% OFF na conta
+                  </span>
+                ) : null}
                 <Link
                   href="/entrar"
                   className="rounded-full bg-white/8 px-3 py-1.5 text-xs text-[var(--rice)]"
@@ -264,6 +340,33 @@ export function StoreFront() {
         </div>
       </section>
 
+      {mostOrdered.length > 0 && activeCategory === "todos" && (
+        <section className="relative mx-auto max-w-6xl px-4 py-10">
+          <h2 className="font-display text-3xl text-[var(--rice)] md:text-4xl">
+            Mais pedidos
+          </h2>
+          <p className="mt-2 text-[var(--rice-dim)]">
+            Os queridinhos da galera em Goiânia.
+          </p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {mostOrdered.map((item, i) => (
+              <div key={item.id} className="relative">
+                <span className="absolute left-3 top-3 z-30 inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-xs font-semibold text-orange-300 ring-1 ring-orange-400/40">
+                  🔥 Mais pedido
+                </span>
+                <MenuCard
+                  item={item}
+                  index={i}
+                  storeOpen={settings.isOpen}
+                  onOpen={() => setSelected(item)}
+                  onAdd={() => cart.addItem(item)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {featured.length > 0 && activeCategory === "todos" && (
         <section className="relative mx-auto max-w-6xl px-4 py-12">
           <h2 className="font-display text-3xl text-[var(--rice)] md:text-4xl">
@@ -323,6 +426,34 @@ export function StoreFront() {
           </div>
         )}
       </section>
+
+      {reviews.length > 0 && (
+        <section className="relative mx-auto max-w-6xl px-4 py-12">
+          <h2 className="font-display text-3xl text-[var(--rice)] md:text-4xl">
+            Avaliações
+          </h2>
+          <p className="mt-2 text-[var(--rice-dim)]">
+            O que quem pediu está falando.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.map((r) => (
+              <article
+                key={r.id}
+                className="rounded-2xl border border-white/8 bg-white/4 p-4"
+              >
+                <p className="text-amber-300">
+                  {"★".repeat(r.rating)}
+                  {"☆".repeat(Math.max(0, 5 - r.rating))}
+                </p>
+                <p className="mt-2 text-sm text-[var(--rice)]">{r.comment}</p>
+                <p className="mt-3 text-xs text-[var(--rice-dim)]">
+                  {r.customerName}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <footer className="mx-auto mt-10 max-w-6xl border-t border-white/8 px-4 py-10 text-sm text-[var(--rice-dim)]">
         <div className="flex flex-wrap gap-6">
@@ -557,20 +688,24 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
   const deliveryFee =
     fulfillment === "delivery" ? settings.deliveryFee || 0 : 0;
-  const total = cart.subtotal + (cart.items.length ? deliveryFee : 0);
+  const discountPercent =
+    user && profile?.couponPercent ? Number(profile.couponPercent) : 0;
+  const discountAmount =
+    discountPercent > 0
+      ? Math.round(cart.subtotal * (discountPercent / 100) * 100) / 100
+      : 0;
+  const total =
+    Math.max(0, cart.subtotal - discountAmount) +
+    (cart.items.length ? deliveryFee : 0);
 
   const checkout = async () => {
     setError("");
-    if (!user) {
-      setError("Entre na sua conta para finalizar o pedido.");
-      return;
-    }
     if (!settings.isOpen) {
       setError(settings.closedMessage);
       return;
     }
     if (!form.name.trim() || !form.phone.trim()) {
-      setError("Preencha nome e telefone.");
+      setError("Preencha nome completo e telefone.");
       return;
     }
     if (fulfillment === "delivery" && !form.address.trim()) {
@@ -584,21 +719,34 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
     setSubmitting(true);
     try {
-      await updateCustomerProfile({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        complement: form.complement.trim(),
-        neighborhood: form.neighborhood.trim(),
-        city: "Goiânia",
-      });
+      if (user) {
+        await updateCustomerProfile({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          address: form.address.trim(),
+          complement: form.complement.trim(),
+          neighborhood: form.neighborhood.trim(),
+          city: "Goiânia",
+        });
+      }
+
+      const guestToken =
+        !user && typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : !user
+            ? `guest_${Date.now()}`
+            : undefined;
+
+      const { rememberGuestOrder } = await import("@/lib/store");
 
       const orderId = await createOrder({
-        userId: user.uid,
+        userId: user?.uid,
+        guestToken,
+        isGuest: !user,
         customer: {
           name: form.name.trim(),
           phone: form.phone.trim(),
-          email: user.email || undefined,
+          email: user?.email || undefined,
           address:
             fulfillment === "delivery"
               ? form.address.trim()
@@ -612,10 +760,14 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
         items: cart.items,
         subtotal: cart.subtotal,
         deliveryFee,
+        discountPercent: discountPercent || undefined,
+        discountAmount: discountAmount || undefined,
         total,
         status: "awaiting_payment",
         paymentStatus: "pending",
       });
+
+      if (guestToken) rememberGuestOrder(orderId, guestToken);
 
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -724,20 +876,22 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     ))}
                   </ul>
                 )
-              ) : !user ? (
-                <div className="space-y-4">
-                  <p className="text-[var(--rice-dim)]">
-                    Para pedir, entre ou crie sua conta. Assim salvamos seu
-                    telefone e endereço para os próximos pedidos.
-                  </p>
-                  <Link href="/entrar?next=checkout">
-                    <Button className="w-full" size="lg">
-                      Entrar / Criar conta
-                    </Button>
-                  </Link>
-                </div>
               ) : (
                 <div className="space-y-4">
+                  {!user && (
+                    <div className="rounded-xl border border-[var(--salmon)]/30 bg-[var(--salmon)]/10 px-3 py-2 text-sm">
+                      Pedido sem conta — preencha seus dados.{" "}
+                      <Link href="/entrar" className="underline">
+                        Cadastre-se e ganhe 10% OFF
+                      </Link>
+                    </div>
+                  )}
+                  {user && discountPercent > 0 && (
+                    <div className="rounded-xl bg-emerald-500/15 px-3 py-2 text-sm text-emerald-200">
+                      Cupom da sua conta: {discountPercent}% OFF aplicado
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -769,7 +923,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
                   {(
                     [
-                      ["name", "Nome"],
+                      ["name", "Nome completo"],
                       ["phone", "Telefone / WhatsApp"],
                       ...(fulfillment === "delivery"
                         ? ([
@@ -827,6 +981,12 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                   <span>Subtotal</span>
                   <span>{formatCurrency(cart.subtotal)}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-300">
+                    <span>Desconto ({discountPercent}%)</span>
+                    <span>-{formatCurrency(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[var(--rice-dim)]">
                   <span>
                     {fulfillment === "pickup" ? "Retirada" : "Taxa de entrega"}
@@ -859,7 +1019,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                 >
                   Continuar
                 </Button>
-              ) : user ? (
+              ) : (
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
@@ -877,7 +1037,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     {submitting ? "Redirecionando..." : "Pagar com Mercado Pago"}
                   </Button>
                 </div>
-              ) : null}
+              )}
             </div>
           </motion.aside>
         </motion.div>

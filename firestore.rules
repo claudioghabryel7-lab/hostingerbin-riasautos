@@ -25,5 +25,13 @@ service cloud.firestore {
     match /admins/{uid} {
       allow read, write: if true;
     }
+
+    match /reviews/{reviewId} {
+      allow read, write: if true;
+    }
+
+    match /coupons/{couponId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -10,6 +10,8 @@ import {
   Settings,
   LogOut,
   Store,
+  TicketPercent,
+  Bell,
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { subscribeActiveOrders, updateSettings, subscribeSettings, ensureStoreSeeded } from "@/lib/store";
@@ -23,6 +25,7 @@ const NAV = [
   { href: "/admin", label: "Painel", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/cardapio", label: "Cardápio", icon: UtensilsCrossed },
+  { href: "/admin/cupons", label: "Cupons", icon: TicketPercent },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -56,18 +59,40 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("pointerdown", prime);
 
+    let first = true;
     return subscribeActiveOrders((orders) => {
       const paid = orders.filter(
         (o) => o.paymentStatus === "approved" && o.status === "received"
       );
       setNewCount(paid.length);
 
+      if (first) {
+        first = false;
+        for (const order of paid) knownIds.current.add(order.id);
+        return;
+      }
+
       for (const order of paid) {
-        if (!knownIds.current.has(order.id) && primed.current) {
-          audioRef.current?.play().catch(() => {});
+        if (!knownIds.current.has(order.id)) {
+          knownIds.current.add(order.id);
+          // Sino: toca 3 vezes
+          const playBell = async () => {
+            for (let i = 0; i < 3; i++) {
+              try {
+                if (audioRef.current) {
+                  audioRef.current.currentTime = 0;
+                  await audioRef.current.play();
+                  await new Promise((r) => setTimeout(r, 450));
+                }
+              } catch {
+                /* autoplay bloqueado até interação */
+              }
+            }
+          };
+          if (primed.current) playBell();
           if (typeof Notification !== "undefined") {
             if (Notification.permission === "granted") {
-              new Notification("Novo pedido Frysuroll", {
+              new Notification("🔔 Novo pedido Fry Sushi", {
                 body: `${order.customer.name} — R$ ${order.total.toFixed(2)}`,
               });
             } else if (Notification.permission !== "denied") {
@@ -75,7 +100,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             }
           }
         }
-        knownIds.current.add(order.id);
       }
     });
   }, []);
@@ -132,13 +156,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
           <button
-            onClick={() => logout()}
+            onClick={async () => {
+              await logout();
+              router.replace("/");
+            }}
             className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-[var(--rice-dim)] hover:bg-white/6"
           >
             <LogOut className="size-4" />
             Sair
           </button>
         </nav>
+        {newCount > 0 && (
+          <p className="mx-3 mb-3 hidden items-center gap-2 rounded-xl bg-[var(--salmon)]/20 px-3 py-2 text-xs text-[var(--salmon)] md:flex">
+            <Bell className="size-4" />
+            {newCount} pedido(s) novo(s) — ouça o sino
+          </p>
+        )}
       </aside>
       <main className="px-4 py-6 md:px-8">{children}</main>
     </div>

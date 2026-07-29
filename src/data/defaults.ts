@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   pickupAddress: "Retirada em Goiânia — confirme o ponto pelo WhatsApp",
   heroImageUrl: "/images/hero-sushi.jpg",
   logoUrl: "/images/logo-fry-sushi.png",
+  signupCouponPercent: 10,
   accentNote:
     "Delivery de sushi frito — um dos melhores hot rolls de Goiânia.",
 };
