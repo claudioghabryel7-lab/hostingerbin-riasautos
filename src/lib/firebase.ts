@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Projeto Firebase atual: gestorfinan-88c9c (Auth + Firestore ativos)
+// Projeto Firebase: gestorfinan-88c9c (Auth + Firestore)
 const firebaseConfig = {
   apiKey: "AIzaSyAiKEREYXMNgEyDptOb8Ct-9_OYYsn4-fo",
   authDomain: "gestorfinan-88c9c.firebaseapp.com",
@@ -13,7 +14,8 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
-export { db, firebaseConfig };
+export { auth, db, firebaseConfig };
 export default app;

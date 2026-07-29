@@ -1,26 +1,23 @@
 import {
-  collection,
+  createUserWithEmailAndPassword,
+  deleteUser,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  type User,
+} from "firebase/auth";
+import {
   doc,
   getDoc,
-  getDocs,
-  query,
+  serverTimestamp,
   setDoc,
   updateDoc,
-  where,
-  limit,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import type { UserProfile } from "@/types";
 
 export type AccountRole = "customer" | "collaborator";
-
-export interface DbAccount extends UserProfile {
-  emailLower: string;
-  passwordHash: string;
-  salt: string;
-  role: AccountRole;
-  sessionToken?: string;
-}
 
 export interface SessionUser {
   uid: string;
@@ -28,14 +25,8 @@ export interface SessionUser {
   displayName?: string | null;
 }
 
-export interface SessionPayload {
-  uid: string;
-  email: string;
-  role: AccountRole;
-  token: string;
-}
-
 const SESSION_KEY = "frysushi_session_v1";
+const DEFAULT_INVITE = "frysushi-admin";
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -48,180 +39,218 @@ function randomId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-async function sha256(text: string) {
-  const data = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-export async function hashPassword(password: string, salt: string) {
-  return sha256(`${salt}::${password}::fry-sushi`);
-}
-
-export function readSession(): SessionPayload | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as SessionPayload;
-  } catch {
-    return null;
+function mapAuthError(err: unknown): Error {
+  const code =
+    err && typeof err === "object" && "code" in err
+      ? String((err as { code: string }).code)
+      : "";
+  if (code === "auth/email-already-in-use") {
+    return new Error("Este e-mail já está cadastrado. Faça login.");
   }
-}
-
-export function writeSession(session: SessionPayload) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+    return new Error("E-mail ou senha incorretos.");
+  }
+  if (code === "auth/user-not-found") {
+    return new Error("Conta não encontrada. Crie um cadastro.");
+  }
+  if (code === "auth/weak-password") {
+    return new Error("A senha precisa ter no mínimo 6 caracteres.");
+  }
+  if (code === "auth/invalid-email") {
+    return new Error("E-mail inválido.");
+  }
+  if (err instanceof Error && err.message) return err;
+  return new Error("Não foi possível autenticar. Tente novamente.");
 }
 
 export function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-export async function findAccountByEmail(email: string) {
-  const emailLower = normalizeEmail(email);
+  if (typeof window === "undefined") return;
   try {
-    const q = query(
-      collection(db, "users"),
-      where("emailLower", "==", emailLower),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      const d = snap.docs[0]!;
-      return { id: d.id, ...(d.data() as DbAccount) };
-    }
+    localStorage.removeItem(SESSION_KEY);
   } catch {
-    // fallback se índice ainda não existir
-    const snap = await getDocs(collection(db, "users"));
-    const found = snap.docs.find((d) => {
-      const data = d.data() as DbAccount;
-      return (data.emailLower || data.email?.toLowerCase()) === emailLower;
-    });
-    if (found) return { id: found.id, ...(found.data() as DbAccount) };
+    /* ignore */
   }
-  return null;
 }
 
-export async function getAccount(uid: string) {
+export function listenAuth(cb: (user: User | null) => void) {
+  return onAuthStateChanged(auth, cb);
+}
+
+export async function loadProfile(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...(snap.data() as DbAccount) };
+  const data = snap.data();
+  return {
+    uid,
+    email: String(data.email ?? ""),
+    name: String(data.name ?? ""),
+    phone: String(data.phone ?? ""),
+    address: data.address ? String(data.address) : undefined,
+    complement: data.complement ? String(data.complement) : undefined,
+    neighborhood: data.neighborhood ? String(data.neighborhood) : undefined,
+    city: data.city ? String(data.city) : "Goiânia",
+    couponPercent:
+      typeof data.couponPercent === "number" ? data.couponPercent : undefined,
+    welcomeCouponClaimed: Boolean(data.welcomeCouponClaimed),
+    createdAt:
+      typeof data.createdAt === "number"
+        ? data.createdAt
+        : Date.now(),
+    updatedAt:
+      typeof data.updatedAt === "number" ? data.updatedAt : undefined,
+  };
 }
 
-export async function countCollaborators() {
+export async function loadIsCollaborator(uid: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, "collaborators", uid));
+  return snap.exists();
+}
+
+export async function loginAccount(email: string, password: string) {
   try {
-    const q = query(
-      collection(db, "users"),
-      where("role", "==", "collaborator"),
-      limit(5)
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      normalizeEmail(email),
+      password
     );
-    const snap = await getDocs(q);
-    return snap.size;
-  } catch {
-    const snap = await getDocs(collection(db, "users"));
-    return snap.docs.filter((d) => (d.data() as DbAccount).role === "collaborator")
-      .length;
+    const [profile, isAdmin] = await Promise.all([
+      loadProfile(credential.user.uid),
+      loadIsCollaborator(credential.user.uid),
+    ]);
+    return { user: credential.user, profile, isAdmin };
+  } catch (err) {
+    throw mapAuthError(err);
   }
 }
 
-export async function registerAccount(input: {
+export async function logoutAccount() {
+  clearSession();
+  await signOut(auth);
+}
+
+export async function registerCustomer(input: {
   email: string;
   password: string;
   name: string;
   phone: string;
-  role: AccountRole;
-  inviteCode?: string;
-  address?: string;
+  address: string;
 }) {
-  const emailLower = normalizeEmail(input.email);
-  if (!emailLower || input.password.length < 6) {
-    throw new Error("E-mail e senha (mín. 6 caracteres) são obrigatórios.");
+  if (!input.address?.trim()) {
+    throw new Error("Informe seu endereço em Goiânia para criar a conta.");
+  }
+  if (input.password.length < 6) {
+    throw new Error("A senha precisa ter no mínimo 6 caracteres.");
   }
 
-  const existing = await findAccountByEmail(emailLower);
-  if (existing) {
-    throw new Error("Este e-mail já está cadastrado. Faça login.");
+  try {
+    const email = normalizeEmail(input.email);
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      input.password
+    );
+    const uid = credential.user.uid;
+    await updateProfile(credential.user, {
+      displayName: input.name.trim(),
+    });
+
+    const now = Date.now();
+    const profileData = {
+      uid,
+      email: input.email.trim(),
+      emailLower: email,
+      name: input.name.trim(),
+      phone: input.phone.trim(),
+      address: input.address.trim(),
+      city: "Goiânia",
+      role: "customer" as const,
+      couponPercent: 10,
+      welcomeCouponClaimed: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await setDoc(doc(db, "users", uid), profileData);
+
+    const profile = await loadProfile(uid);
+    return { user: credential.user, profile };
+  } catch (err) {
+    throw mapAuthError(err);
+  }
+}
+
+export async function registerCollaborator(input: {
+  email: string;
+  password: string;
+  name?: string;
+  inviteCode?: string;
+}) {
+  if (input.password.length < 6) {
+    throw new Error("A senha precisa ter no mínimo 6 caracteres.");
   }
 
-  if (input.role === "collaborator") {
-    const hasCollab = (await countCollaborators()) > 0;
-    const expected = process.env.NEXT_PUBLIC_ADMIN_INVITE || "frysushi-admin";
-    if (hasCollab && input.inviteCode !== expected) {
-      throw new Error(
-        "Código de convite inválido. Peça ao responsável da loja."
-      );
+  const expected =
+    process.env.NEXT_PUBLIC_ADMIN_INVITE?.trim() || DEFAULT_INVITE;
+  const invite = (input.inviteCode || "").trim() || expected;
+
+  try {
+    const email = normalizeEmail(input.email);
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      input.password
+    );
+    const uid = credential.user.uid;
+    const displayName =
+      input.name?.trim() || "Colaborador Fry Sushi";
+    await updateProfile(credential.user, { displayName });
+
+    const setupRef = doc(db, "meta", "storeSetup");
+    const setupSnap = await getDoc(setupRef);
+    const isFirst = !setupSnap.exists();
+
+    if (!isFirst) {
+      const storedInvite = String(setupSnap.data()?.inviteCode || "");
+      if (invite !== storedInvite && invite !== expected) {
+        await deleteUser(credential.user).catch(() => undefined);
+        throw new Error(
+          "Código de convite inválido. Peça ao responsável da loja."
+        );
+      }
     }
+
+    const now = Date.now();
+    await setDoc(doc(db, "collaborators", uid), {
+      uid,
+      email: input.email.trim(),
+      name: displayName,
+      inviteCode: isFirst ? expected : invite,
+      createdAt: now,
+    });
+
+    if (isFirst) {
+      await setDoc(setupRef, {
+        inviteCode: expected,
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+      });
+    }
+
+    await setDoc(doc(db, "users", uid), {
+      uid,
+      email: input.email.trim(),
+      emailLower: email,
+      name: displayName,
+      phone: "(62) 99504-5038",
+      city: "Goiânia",
+      role: "collaborator",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { user: credential.user };
+  } catch (err) {
+    throw mapAuthError(err);
   }
-
-  const uid = randomId();
-  const salt = randomId();
-  const passwordHash = await hashPassword(input.password, salt);
-  const sessionToken = randomId();
-  const now = Date.now();
-
-  const account: DbAccount = {
-    uid,
-    email: input.email.trim(),
-    emailLower,
-    name: input.name.trim() || (input.role === "collaborator" ? "Colaborador" : "Cliente"),
-    phone: input.phone || "",
-    city: "Goiânia",
-    address: input.address || "",
-    passwordHash,
-    salt,
-    role: input.role,
-    sessionToken,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await setDoc(doc(db, "users", uid), account);
-
-  const session: SessionPayload = {
-    uid,
-    email: account.email,
-    role: account.role,
-    token: sessionToken,
-  };
-  writeSession(session);
-  return { account, session };
-}
-
-export async function loginAccount(email: string, password: string) {
-  const account = await findAccountByEmail(email);
-  if (!account) {
-    throw new Error("Conta não encontrada. Crie um cadastro.");
-  }
-  const hash = await hashPassword(password, account.salt);
-  if (hash !== account.passwordHash) {
-    throw new Error("Senha incorreta.");
-  }
-  const sessionToken = randomId();
-  await updateDoc(doc(db, "users", account.id), {
-    sessionToken,
-    updatedAt: Date.now(),
-  });
-  const session: SessionPayload = {
-    uid: account.uid || account.id,
-    email: account.email,
-    role: account.role || "customer",
-    token: sessionToken,
-  };
-  writeSession(session);
-  return { account, session };
-}
-
-export async function restoreSession() {
-  const session = readSession();
-  if (!session) return null;
-  const account = await getAccount(session.uid);
-  if (!account || account.sessionToken !== session.token) {
-    clearSession();
-    return null;
-  }
-  return { account, session };
 }
 
 export async function updateAccountProfile(
@@ -234,14 +263,16 @@ export async function updateAccountProfile(
         v !== undefined &&
         k !== "uid" &&
         k !== "email" &&
-        k !== "createdAt"
+        k !== "createdAt" &&
+        k !== "couponPercent" &&
+        k !== "welcomeCouponClaimed"
     )
   );
   await updateDoc(doc(db, "users", uid), {
     ...clean,
     updatedAt: Date.now(),
   });
-  return getAccount(uid);
+  return loadProfile(uid);
 }
 
 /** Comprime imagem e devolve data URL para gravar no Firestore */
@@ -267,7 +298,6 @@ export async function fileToDbImage(
   bitmap.close();
 
   let dataUrl = canvas.toDataURL("image/jpeg", quality);
-  // Se ainda grande demais pro Firestore (~900KB seguros), reduz qualidade
   let q = quality;
   while (dataUrl.length > 900_000 && q > 0.4) {
     q -= 0.08;

@@ -62,13 +62,14 @@ export function OrderTracker({
       });
       const data = await res.json();
       if (data.clientUpdate && data.paymentStatus === "approved") {
+        // Fallback se o Admin SDK não estiver configurado no servidor
         await updateDoc(doc(db, "orders", orderId), {
           status: "received",
           paymentStatus: "approved",
           mpPaymentId: data.paymentId ? String(data.paymentId) : null,
           updatedAt: Date.now(),
         });
-        await incrementMenuOrderCounts(order.items || []);
+        await incrementMenuOrderCounts(order.items || []).catch(() => undefined);
       }
       return data;
     };

@@ -2,9 +2,130 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Fry Sushi — libera leitura/escrita do app (contas, pedidos, cupons, imagens)
-    match /{document=**} {
-      allow read, write: if true;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isCollaborator() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/collaborators/$(request.auth.uid));
+    }
+
+    // Vitrine: leitura pública; escrita só colaborador
+    match /store/{docId} {
+      allow read: if true;
+      allow write: if isCollaborator();
+    }
+
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if isCollaborator();
+    }
+
+    match /images/{imageId} {
+      allow read: if true;
+      allow write: if isCollaborator();
+    }
+
+    // Avaliações: ler públicas; criar validada; só colaborador edita/apaga
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll([
+          'orderId', 'customerName', 'rating', 'comment', 'createdAt', 'visible'
+        ])
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() > 0
+        && request.resource.data.comment.size() < 500;
+      allow update, delete: if isCollaborator();
+    }
+
+    // Pedidos: criar (cliente/guest); ler por link; updates limitados
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll([
+          'customer', 'items', 'total', 'status', 'paymentStatus', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.status == 'awaiting_payment'
+        && request.resource.data.paymentStatus == 'pending'
+        && request.resource.data.total is number
+        && request.resource.data.total > 0
+        && request.resource.data.customer.keys().hasAll(['name', 'phone', 'address'])
+        && (
+          !('userId' in request.resource.data)
+          || (signedIn() && request.resource.data.userId == request.auth.uid)
+        );
+      allow update: if isCollaborator()
+        || (
+          resource.data.paymentStatus == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['paymentStatus', 'status', 'mpPaymentId', 'mpPreferenceId', 'updatedAt'])
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['customerConfirmedDelivery', 'status', 'updatedAt'])
+          && request.resource.data.customerConfirmedDelivery == true
+          && request.resource.data.status == 'completed'
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['reviewed', 'updatedAt'])
+          && request.resource.data.reviewed == true
+        );
+      allow delete: if isCollaborator();
+    }
+
+    // Perfis: Auth Firebase. Sem senha no documento.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isCollaborator();
+      allow create: if isOwner(uid)
+        && request.resource.data.role in ['customer', 'collaborator']
+        && (
+          !('couponPercent' in request.resource.data)
+          || (
+            request.resource.data.role == 'customer'
+            && request.resource.data.couponPercent == 10
+          )
+        );
+      allow update: if (isOwner(uid)
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['role', 'couponPercent', 'welcomeCouponClaimed']))
+        || isCollaborator();
+      allow delete: if isCollaborator();
+    }
+
+    // Colaboradores: 1º cria se meta ainda não travou; depois só com inviteCode
+    match /collaborators/{uid} {
+      allow read: if isOwner(uid) || isCollaborator();
+      allow create: if isOwner(uid) && (
+        !exists(/databases/$(database)/documents/meta/storeSetup)
+        || (
+          exists(/databases/$(database)/documents/meta/storeSetup)
+          && request.resource.data.inviteCode
+              == get(/databases/$(database)/documents/meta/storeSetup).data.inviteCode
+        )
+      );
+      allow update, delete: if isCollaborator();
+    }
+
+    match /meta/{docId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/meta/$(docId));
+      allow update: if isCollaborator();
+      allow delete: if false;
+    }
+
+    match /coupons/{couponId} {
+      allow read: if isCollaborator()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isCollaborator();
     }
   }
 }

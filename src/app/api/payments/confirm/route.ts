@@ -5,14 +5,8 @@ export const runtime = "nodejs";
 
 async function markPaid(orderId: string, paymentId: string) {
   try {
-    const { getAdminDb } = await import("@/lib/firebase-admin");
-    await getAdminDb().collection("orders").doc(orderId).update({
-      status: "received",
-      paymentStatus: "approved",
-      mpPaymentId: String(paymentId),
-      updatedAt: Date.now(),
-    });
-    return true;
+    const { markOrderPaidAdmin } = await import("@/lib/order-paid");
+    return await markOrderPaidAdmin(orderId, paymentId);
   } catch (e) {
     console.warn("Admin DB update failed", e);
     return false;

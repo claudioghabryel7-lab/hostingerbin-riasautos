@@ -1,42 +1,32 @@
 # Fry Sushi (Goiânia)
 
-Next.js + Firebase projeto **`gestorfinan-88c9c`** (Auth e Firestore ativos no console).
+Next.js + Firebase projeto **`gestorfinan-88c9c`**.
 
-Contas, cardápio, pedidos e imagens ficam no **Firestore**. Login do site usa a coleção `users` (sem depender do Authenticator do Firebase no fluxo do cliente).
+## Segurança (importante)
+
+As regras do Firestore **não são públicas**. Login usa **Firebase Authentication** (e-mail/senha). Senhas **não** ficam no banco — só o perfil em `users/{uid}`. Colaboradores ficam em `collaborators/{uid}`.
+
+### O que fazer agora no Console
+
+1. **Authentication** → Sign-in method → ative **E-mail/senha**
+2. **Firestore → Rules** → cole o arquivo `firestore.rules` deste repo → **Publish**
+   - Ou: `npm run firebase:rules` (precisa de `FIREBASE_TOKEN`)
+
+Sem publicar as regras novas, o aviso do Firebase (“qualquer pessoa pode roubar…”) continua válido.
+
+### Contas antigas (hash no Firestore)
+
+Contas criadas no modo antigo (senha no documento) **não** entram mais. Cliente e colaborador precisam **cadastrar de novo** com Firebase Auth.
+
+- 1º colaborador: `/admin/login` → “Criar conta” (sem convite)
+- Próximos: código `frysushi-admin` (`NEXT_PUBLIC_ADMIN_INVITE`)
+- Cliente: `/entrar` → ganha 10% OFF na conta
 
 ## Config Firebase (já no código)
 
 ```js
 projectId: "gestorfinan-88c9c"
 ```
-
-## Publicar regras (obrigatório na 1ª vez)
-
-### Opção A — Console (rápido)
-1. [Firebase Console](https://console.firebase.google.com/project/gestorfinan-88c9c/firestore/rules)
-2. Cole o conteúdo de `firestore.rules`
-3. Publish
-
-### Opção B — CLI (para o agente atualizar sozinho depois)
-No seu PC:
-
-```bash
-npx firebase login:ci
-```
-
-Cole o token em `.env.local`:
-
-```
-FIREBASE_TOKEN=1//seu_token
-```
-
-Depois, neste repo:
-
-```bash
-npm run firebase:rules
-```
-
-Com o `FIREBASE_TOKEN` configurado no ambiente do agente, a cada alteração em `firestore.rules` o deploy pode ser feito com esse comando.
 
 ## Scripts
 
@@ -48,4 +38,4 @@ npm run firebase:rules   # publica regras no gestorfinan-88c9c
 
 ## Mercado Pago
 
-Copie `.env.example` → `.env.local` e preencha as chaves.
+Copie `.env.example` → `.env.local` e preencha as chaves. Em produção, defina `NEXT_PUBLIC_APP_URL` com a URL pública.

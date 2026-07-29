@@ -11,9 +11,13 @@ import {
 } from "react";
 import {
   clearSession,
+  listenAuth,
+  loadIsCollaborator,
+  loadProfile,
   loginAccount,
-  registerAccount,
-  restoreSession,
+  logoutAccount,
+  registerCollaborator,
+  registerCustomer as registerCustomerAccount,
   updateAccountProfile,
   type SessionUser,
 } from "@/lib/db-auth";
@@ -44,37 +48,6 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-function toProfile(account: {
-  uid?: string;
-  id?: string;
-  email: string;
-  name: string;
-  phone: string;
-  address?: string;
-  complement?: string;
-  neighborhood?: string;
-  city?: string;
-  couponPercent?: number;
-  welcomeCouponClaimed?: boolean;
-  createdAt: number;
-  updatedAt?: number;
-}): UserProfile {
-  return {
-    uid: account.uid || account.id || "",
-    email: account.email,
-    name: account.name,
-    phone: account.phone,
-    address: account.address,
-    complement: account.complement,
-    neighborhood: account.neighborhood,
-    city: account.city || "Goiânia",
-    couponPercent: account.couponPercent,
-    welcomeCouponClaimed: account.welcomeCouponClaimed,
-    createdAt: account.createdAt,
-    updatedAt: account.updatedAt,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -82,48 +55,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const restored = await restoreSession();
-        if (!alive) return;
-        if (!restored) {
-          setLoading(false);
-          return;
-        }
-        const p = toProfile(restored.account);
-        setUser({
-          uid: p.uid,
-          email: p.email,
-          displayName: p.name,
-        });
-        setProfile(
-          toProfile({
-            ...restored.account,
-            couponPercent: restored.account.couponPercent,
-            welcomeCouponClaimed: restored.account.welcomeCouponClaimed,
-          })
-        );
-        setIsAdmin(restored.account.role === "collaborator");
-      } catch {
-        clearSession();
-      } finally {
-        if (alive) setLoading(false);
+    clearSession();
+    return listenAuth(async (fbUser) => {
+      if (!fbUser) {
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
       }
-    })();
-    return () => {
-      alive = false;
-    };
+      const [p, admin] = await Promise.all([
+        loadProfile(fbUser.uid),
+        loadIsCollaborator(fbUser.uid),
+      ]);
+      setUser({
+        uid: fbUser.uid,
+        email: fbUser.email || p?.email || "",
+        displayName: fbUser.displayName || p?.name || null,
+      });
+      setProfile(p);
+      setIsAdmin(admin);
+      setLoading(false);
+    });
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { account, session } = await loginAccount(email, password);
-    const p = toProfile(account);
-    const admin = session.role === "collaborator";
-    setUser({ uid: p.uid, email: p.email, displayName: p.name });
-    setProfile(p);
-    setIsAdmin(admin);
-    return { isAdmin: admin };
+    const res = await loginAccount(email, password);
+    setUser({
+      uid: res.user.uid,
+      email: res.user.email || "",
+      displayName: res.user.displayName,
+    });
+    setProfile(res.profile);
+    setIsAdmin(res.isAdmin);
+    return { isAdmin: res.isAdmin };
   }, []);
 
   const registerCustomer = useCallback(
@@ -134,29 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone: string;
       address: string;
     }) => {
-      if (!data.address?.trim()) {
-        throw new Error("Informe seu endereço em Goiânia para criar a conta.");
-      }
-      const { account } = await registerAccount({
-        ...data,
-        role: "customer",
-        address: data.address,
+      const res = await registerCustomerAccount(data);
+      setUser({
+        uid: res.user.uid,
+        email: res.user.email || data.email,
+        displayName: data.name,
       });
-      // Cupom de boas-vindas 10% na conta
-      const { updateDoc, doc } = await import("firebase/firestore");
-      const { db } = await import("@/lib/firebase");
-      await updateDoc(doc(db, "users", account.uid), {
-        couponPercent: 10,
-        welcomeCouponClaimed: true,
-        updatedAt: Date.now(),
-      });
-      const p = toProfile({
-        ...account,
-        couponPercent: 10,
-        welcomeCouponClaimed: true,
-      });
-      setUser({ uid: p.uid, email: p.email, displayName: p.name });
-      setProfile(p);
+      setProfile(res.profile);
       setIsAdmin(false);
       if (typeof window !== "undefined") {
         sessionStorage.setItem("frysushi_welcome_coupon", "10");
@@ -172,18 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name?: string;
       inviteCode?: string;
     }) => {
-      const { account } = await registerAccount({
-        email: data.email,
-        password: data.password,
-        name: data.name || "Colaborador Fry Sushi",
-        phone: "(62) 99504-5038",
-        role: "collaborator",
-        inviteCode: data.inviteCode,
+      const res = await registerCollaborator(data);
+      setUser({
+        uid: res.user.uid,
+        email: res.user.email || data.email,
+        displayName: data.name || "Colaborador",
       });
-      const p = toProfile(account);
-      setUser({ uid: p.uid, email: p.email, displayName: p.name });
-      setProfile(p);
       setIsAdmin(true);
+      const p = await loadProfile(res.user.uid);
+      setProfile(p);
     },
     []
   );
@@ -192,12 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (data: Partial<UserProfile>) => {
       if (!user) throw new Error("Faça login primeiro");
       const next = await updateAccountProfile(user.uid, data);
-      if (next) setProfile(toProfile(next));
+      setProfile(next);
     },
     [user]
   );
 
   const logout = useCallback(async () => {
+    await logoutAccount();
     clearSession();
     setUser(null);
     setProfile(null);
