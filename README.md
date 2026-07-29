@@ -27,6 +27,8 @@ Depois de salvar, faça **Redeploy**. Sem `MERCADOPAGO_ACCESS_TOKEN` o checkout 
 1. Authentication → ative **E-mail/senha**
 2. Firestore → Rules → publique `firestore.rules`
 
+Contas ficam no **Firebase Authentication**. O Firestore só guarda perfil (`users/{uid}`) **sem senha**. Contas antigas com `passwordHash` no banco não logam — cadastre de novo (ou use o login após migração no Auth).
+
 ## Scripts
 
 ```bash
