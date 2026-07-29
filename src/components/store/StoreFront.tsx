@@ -543,14 +543,16 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
   useEffect(() => {
     if (!profile) return;
-    setForm((f) => ({
-      ...f,
-      name: profile.name || f.name,
-      phone: profile.phone || f.phone,
-      address: profile.address || f.address,
-      complement: profile.complement || f.complement,
-      neighborhood: profile.neighborhood || f.neighborhood,
-    }));
+    queueMicrotask(() => {
+      setForm((f) => ({
+        ...f,
+        name: profile.name || f.name,
+        phone: profile.phone || f.phone,
+        address: profile.address || f.address,
+        complement: profile.complement || f.complement,
+        neighborhood: profile.neighborhood || f.neighborhood,
+      }));
+    });
   }, [profile]);
 
   const deliveryFee =

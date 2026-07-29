@@ -33,11 +33,12 @@ export default function EntrarClient() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (profile) {
+    if (!profile) return;
+    queueMicrotask(() => {
       setName(profile.name || "");
       setPhone(profile.phone || "");
       setAddress(profile.address || "");
-    }
+    });
   }, [profile]);
 
   useEffect(() => {
