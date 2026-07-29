@@ -53,6 +53,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     audioRef.current.preload = "auto";
     ensureStoreSeeded().catch(() => {});
 
+    const expireTick = () => {
+      fetch("/api/orders/expire", { method: "POST" }).catch(() => undefined);
+    };
+    expireTick();
+    const expireTimer = setInterval(expireTick, 60_000);
+
     const prime = () => {
       primed.current = true;
       window.removeEventListener("pointerdown", prime);
@@ -60,7 +66,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("pointerdown", prime);
 
     let first = true;
-    return subscribeActiveOrders((orders) => {
+    const unsub = subscribeActiveOrders((orders) => {
       const paid = orders.filter(
         (o) => o.paymentStatus === "approved" && o.status === "received"
       );
@@ -92,7 +98,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           if (primed.current) playBell();
           if (typeof Notification !== "undefined") {
             if (Notification.permission === "granted") {
-              new Notification("🔔 Novo pedido Fry Sushi", {
+              new Notification("Novo pedido Fry Sushi", {
                 body: `${order.customer.name} — R$ ${order.total.toFixed(2)}`,
               });
             } else if (Notification.permission !== "denied") {
@@ -102,6 +108,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         }
       }
     });
+
+    return () => {
+      clearInterval(expireTimer);
+      window.removeEventListener("pointerdown", prime);
+      unsub();
+    };
   }, []);
 
   if (loading || !user || !isAdmin) {

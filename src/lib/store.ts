@@ -195,13 +195,15 @@ export async function uploadImage(file: File, folder = "menu") {
 }
 
 export async function createOrder(
-  order: Omit<Order, "id" | "createdAt" | "updatedAt">
+  order: Omit<Order, "id" | "createdAt" | "updatedAt" | "expiresAt">
 ) {
   const now = Date.now();
+  const { PAYMENT_TIMEOUT_MS } = await import("@/lib/payment-timeout");
   const payload = stripUndefined({
     ...order,
     createdAt: now,
     updatedAt: now,
+    expiresAt: now + PAYMENT_TIMEOUT_MS,
   } as Record<string, unknown>);
   const refDoc = await addDoc(collection(db, "orders"), payload);
   return refDoc.id;
@@ -235,6 +237,11 @@ export function subscribeActiveOrders(cb: (orders: Order[]) => void): Unsubscrib
             "out_for_delivery",
             "ready_for_pickup",
           ].includes(o.status)
+          && !(
+            o.status === "awaiting_payment" &&
+            o.paymentStatus === "pending" &&
+            (o.expiresAt || o.createdAt + 15 * 60 * 1000) < Date.now()
+          )
         );
       cb(active);
     },

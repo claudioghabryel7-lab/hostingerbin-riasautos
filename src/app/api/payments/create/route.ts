@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
       id: string;
       total?: number;
       paymentStatus?: string;
+      status?: string;
+      createdAt?: number;
+      expiresAt?: number;
       customer?: { name?: string; email?: string; phone?: string };
     } | null;
 
@@ -47,6 +50,29 @@ export async function POST(req: NextRequest) {
         status: "approved",
         orderId,
       });
+    }
+
+    if (
+      order.status === "cancelled" ||
+      order.paymentStatus === "cancelled" ||
+      order.paymentStatus === "rejected"
+    ) {
+      return NextResponse.json(
+        { error: "Este pedido foi cancelado. Faça um novo pedido." },
+        { status: 410 }
+      );
+    }
+
+    const { isPaymentExpired } = await import("@/lib/payment-timeout");
+    if (isPaymentExpired(order as { createdAt?: number; expiresAt?: number; paymentStatus?: string; status?: string })) {
+      return NextResponse.json(
+        {
+          error:
+            "Tempo esgotado (15 min). O pedido foi cancelado por falta de pagamento.",
+          expired: true,
+        },
+        { status: 410 }
+      );
     }
 
     const amount = Number(Number(order.total || 0).toFixed(2));
@@ -64,25 +90,47 @@ export async function POST(req: NextRequest) {
       order.customer?.email ||
       `pedido.${orderId.slice(0, 8)}@frysushi.cliente`;
 
-    const paymentBody: Record<string, unknown> = {
-      ...formData,
-      transaction_amount: amount,
-      description: `Fry Sushi #${orderId.slice(0, 8)}`,
-      external_reference: orderId,
-      notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-      metadata: { orderId },
-      payer: {
-        ...(typeof formData.payer === "object" ? formData.payer : {}),
-        email: payerEmail,
-        first_name:
-          formData.payer?.first_name ||
-          order.customer?.name?.split(" ")[0] ||
-          "Cliente",
-      },
-    };
+  // Limpa formData do Brick — evita campos extras que quebram a API
+  const allowed = [
+    "transaction_amount",
+    "token",
+    "description",
+    "installments",
+    "payment_method_id",
+    "issuer_id",
+    "payer",
+    "additional_info",
+    "binary_mode",
+    "campaign_id",
+    "coupon_amount",
+    "differential_pricing_id",
+  ] as const;
 
-    // Garante valor do servidor (não confiar no Brick)
-    paymentBody.transaction_amount = amount;
+  const cleanedForm: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (key in formData && formData[key] !== undefined) {
+      cleanedForm[key] = formData[key];
+    }
+  }
+
+  const paymentBody: Record<string, unknown> = {
+    ...cleanedForm,
+    transaction_amount: amount,
+    description: `Fry Sushi #${orderId.slice(0, 8)}`,
+    external_reference: orderId,
+    notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+    metadata: { orderId },
+    payer: {
+      ...(typeof formData.payer === "object" && formData.payer
+        ? formData.payer
+        : {}),
+      email: payerEmail,
+      first_name:
+        formData.payer?.first_name ||
+        order.customer?.name?.split(" ")[0] ||
+        "Cliente",
+    },
+  };
 
     const paymentApi = getPaymentApi();
     const result = await paymentApi.create({
@@ -128,6 +176,8 @@ export async function POST(req: NextRequest) {
       qrCode: tx.qr_code || null,
       qrCodeBase64: tx.qr_code_base64 || null,
       ticketUrl: tx.ticket_url || null,
+      // Sem Admin SDK o patchOrder pode falhar — cliente grava
+      clientUpdate: status === "approved",
     });
   } catch (e) {
     console.error("payments/create", e);

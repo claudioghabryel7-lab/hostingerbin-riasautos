@@ -8,6 +8,17 @@ import { DbImage } from "@/components/ui/DbImage";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { subscribeOrder } from "@/lib/store";
+import {
+  confirmPaymentOnClient,
+  markOrderPaidOnClient,
+  savePaymentIdOnClient,
+} from "@/lib/confirm-payment-client";
+import {
+  formatCountdown,
+  isPaymentExpired,
+  remainingPaymentMs,
+} from "@/lib/payment-timeout";
+import { expireOrderIfNeeded } from "@/lib/expire-order-client";
 import type { Order } from "@/types";
 
 const LOGO = "/images/logo-fry-sushi.png";
@@ -39,11 +50,30 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
   );
   const [payResult, setPayResult] = useState<PayResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [remainMs, setRemainMs] = useState(0);
   const ready = ensureMp();
 
   useEffect(() => {
     return subscribeOrder(orderId, setOrder);
   }, [orderId]);
+
+  // Countdown + cancelamento automático (15 min)
+  useEffect(() => {
+    if (!order) return;
+    if (order.paymentStatus === "approved") return;
+    if (order.status === "cancelled") return;
+
+    const tick = async () => {
+      setRemainMs(remainingPaymentMs(order));
+      if (isPaymentExpired(order)) {
+        await expireOrderIfNeeded(order);
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [order]);
 
   useEffect(() => {
     if (order?.paymentStatus === "approved") {
@@ -51,42 +81,58 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
     }
   }, [order, orderId, router]);
 
+  // Polling Pix / cartão em análise
   useEffect(() => {
-    if (!payResult?.paymentId || payResult.status === "approved") return;
+    if (!payResult?.paymentId) return;
+    if (order?.paymentStatus === "approved") return;
+
     let cancelled = false;
 
     const tick = async () => {
       try {
-        const res = await fetch("/api/payments/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId,
-            paymentId: payResult.paymentId,
-          }),
-        });
-        const data = await res.json();
+        setChecking(true);
+        const data = await confirmPaymentOnClient(
+          orderId,
+          payResult.paymentId
+        );
         if (cancelled) return;
-        if (data.paymentStatus === "approved" || data.status === "approved") {
+        if (
+          data.paymentStatus === "approved" ||
+          data.status === "approved" ||
+          data.clientApplied
+        ) {
           router.replace(`/pedido/${orderId}`);
         }
       } catch {
         /* ignore */
+      } finally {
+        if (!cancelled) setChecking(false);
       }
     };
 
     tick();
-    const timer = setInterval(tick, 4000);
+    const timer = setInterval(tick, 3000);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [payResult, orderId, router]);
+  }, [payResult, orderId, router, order?.paymentStatus]);
 
   const amount = useMemo(
     () => Number(Number(order?.total || 0).toFixed(2)),
     [order?.total]
   );
+
+  const goToTrackingAfterPaid = async (paymentId: string) => {
+    try {
+      await markOrderPaidOnClient(orderId, paymentId);
+    } catch (e) {
+      console.warn("mark paid client", e);
+      // tenta via API (Admin) + fallback
+      await confirmPaymentOnClient(orderId, paymentId).catch(() => undefined);
+    }
+    router.replace(`/pedido/${orderId}`);
+  };
 
   if (!order) {
     return (
@@ -100,6 +146,37 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
     return (
       <div className="flex min-h-screen items-center justify-center text-[var(--rice-dim)]">
         Pagamento confirmado. Abrindo acompanhamento...
+      </div>
+    );
+  }
+
+  if (
+    order.status === "cancelled" ||
+    order.paymentStatus === "cancelled" ||
+    isPaymentExpired(order)
+  ) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center px-4">
+        <div className="glass-panel w-full max-w-md rounded-3xl p-6 text-center">
+          <DbImage
+            src={LOGO}
+            alt="Fry Sushi"
+            width={56}
+            height={56}
+            className="mx-auto rounded-full"
+          />
+          <h1 className="font-display mt-4 text-2xl">Pedido cancelado</h1>
+          <p className="mt-2 text-sm text-[var(--rice-dim)]">
+            O pagamento não foi concluído em 15 minutos. Faça um novo pedido no
+            cardápio.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex rounded-xl bg-[var(--salmon)] px-5 py-3 text-sm font-semibold text-[var(--ink)]"
+          >
+            Voltar ao cardápio
+          </Link>
+        </div>
       </div>
     );
   }
@@ -134,6 +211,16 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
             <span className="text-sm text-[var(--rice-dim)]">Total</span>
             <span className="font-display text-2xl text-[var(--salmon)]">
               {formatCurrency(amount)}
+            </span>
+          </div>
+
+          <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Tempo para pagar:{" "}
+            <strong className="font-display text-lg tracking-wide">
+              {formatCountdown(remainMs)}
+            </strong>
+            <span className="mt-1 block text-xs text-amber-100/80">
+              Sem pagamento em 15 minutos o pedido é cancelado automaticamente.
             </span>
           </div>
 
@@ -179,8 +266,9 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
                     </div>
                   ) : null}
                   <p className="mt-3 text-xs text-black/60">
-                    Assim que o Pix for confirmado, abrimos o acompanhamento
-                    automaticamente.
+                    {checking
+                      ? "Verificando pagamento..."
+                      : "Assim que o Pix for confirmado, abrimos o acompanhamento automaticamente."}
                   </p>
                 </div>
               )}
@@ -203,10 +291,38 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
               <Button
                 type="button"
                 className="w-full"
-                variant="secondary"
-                onClick={() => router.push(`/pedido/${orderId}`)}
+                disabled={checking}
+                onClick={async () => {
+                  setChecking(true);
+                  setError("");
+                  try {
+                    const data = await confirmPaymentOnClient(
+                      orderId,
+                      payResult.paymentId
+                    );
+                    if (
+                      data.paymentStatus === "approved" ||
+                      data.status === "approved" ||
+                      data.clientApplied
+                    ) {
+                      router.replace(`/pedido/${orderId}`);
+                      return;
+                    }
+                    setError(
+                      "Ainda não identificamos o pagamento. Aguarde alguns segundos e toque de novo."
+                    );
+                  } catch (e) {
+                    setError(
+                      e instanceof Error
+                        ? e.message
+                        : "Não foi possível confirmar agora."
+                    );
+                  } finally {
+                    setChecking(false);
+                  }
+                }}
               >
-                Já paguei — acompanhar pedido
+                {checking ? "Confirmando..." : "Já paguei — confirmar agora"}
               </Button>
             </div>
           ) : ready && amount > 0 ? (
@@ -248,13 +364,23 @@ export function EmbeddedCheckout({ orderId }: { orderId: string }) {
                     throw new Error(data.error || "Falha no pagamento");
                   }
 
-                  if (data.status === "approved" || data.alreadyPaid) {
-                    router.replace(`/pedido/${orderId}`);
+                  const paymentId = String(data.paymentId || "");
+                  if (paymentId) {
+                    await savePaymentIdOnClient(orderId, paymentId).catch(
+                      () => undefined
+                    );
+                  }
+
+                  if (
+                    (data.status === "approved" || data.alreadyPaid) &&
+                    paymentId
+                  ) {
+                    await goToTrackingAfterPaid(paymentId);
                     return;
                   }
 
                   setPayResult({
-                    paymentId: String(data.paymentId),
+                    paymentId,
                     status: String(data.status || "pending"),
                     qrCode: data.qrCode,
                     qrCodeBase64: data.qrCodeBase64,

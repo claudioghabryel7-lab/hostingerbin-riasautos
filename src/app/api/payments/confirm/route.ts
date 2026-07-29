@@ -13,13 +13,29 @@ async function markPaid(orderId: string, paymentId: string) {
   }
 }
 
+function approvedResponse(
+  orderId: string,
+  paymentId: string,
+  updated: boolean
+) {
+  return NextResponse.json({
+    ok: true,
+    orderId,
+    paymentId,
+    updated,
+    // Sem FIREBASE_SERVICE_ACCOUNT o Admin falha — cliente precisa gravar
+    clientUpdate: !updated,
+    paymentStatus: "approved",
+    status: "received",
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const orderId = body.orderId as string | undefined;
     let paymentId = body.paymentId as string | undefined;
 
-    // Also support Mercado Pago query-style notifications forwarded here
     const url = new URL(req.url);
     const topic = url.searchParams.get("topic") || url.searchParams.get("type");
     const id = url.searchParams.get("id") || url.searchParams.get("data.id");
@@ -35,30 +51,48 @@ export async function POST(req: NextRequest) {
       const ref = String(payment.external_reference || orderId || "");
       if (payment.status === "approved" && ref) {
         const ok = await markPaid(ref, String(payment.id));
-        return NextResponse.json({
-          ok: true,
-          orderId: ref,
-          updated: ok,
-          status: payment.status,
-          paymentStatus: "approved",
-          paymentId: String(payment.id),
-        });
+        return approvedResponse(ref, String(payment.id), ok);
       }
       return NextResponse.json({
         ok: true,
         status: payment.status,
         paymentStatus: payment.status,
         updated: false,
+        pending: payment.status === "pending" || payment.status === "in_process",
         paymentId: String(payment.id || paymentId),
         orderId: ref || orderId,
       });
     }
 
     if (!orderId) {
-      return NextResponse.json({ error: "orderId ou paymentId obrigatório" }, { status: 400 });
+      return NextResponse.json(
+        { error: "orderId ou paymentId obrigatório" },
+        { status: 400 }
+      );
     }
 
-    // Search payments by external_reference
+    // 1) Tenta pelo mpPaymentId já salvo no pedido (via REST/Admin)
+    try {
+      const { getOrderFromFirestore } = await import("@/lib/orders-server");
+      const order = (await getOrderFromFirestore(orderId)) as {
+        mpPaymentId?: string;
+        paymentStatus?: string;
+      } | null;
+      if (order?.paymentStatus === "approved") {
+        return approvedResponse(orderId, String(order.mpPaymentId || ""), true);
+      }
+      if (order?.mpPaymentId) {
+        const payment = await paymentApi.get({ id: String(order.mpPaymentId) });
+        if (payment.status === "approved") {
+          const ok = await markPaid(orderId, String(payment.id));
+          return approvedResponse(orderId, String(payment.id), ok);
+        }
+      }
+    } catch (e) {
+      console.warn("order lookup for confirm failed", e);
+    }
+
+    // 2) Busca pagamentos pelo external_reference
     const search = await paymentApi.search({
       options: {
         criteria: "desc",
@@ -74,23 +108,20 @@ export async function POST(req: NextRequest) {
     const approved = results.find((p) => p.status === "approved");
     if (approved?.id) {
       const ok = await markPaid(orderId, String(approved.id));
-      return NextResponse.json({
-        ok: true,
-        orderId,
-        updated: ok,
-        paymentId: approved.id,
-        // Instruct client to update if server couldn't
-        clientUpdate: !ok,
-        paymentStatus: "approved",
-        status: "received",
-      });
+      return approvedResponse(orderId, String(approved.id), ok);
     }
+
+    const pending = results.find(
+      (p) => p.status === "pending" || p.status === "in_process"
+    );
 
     return NextResponse.json({
       ok: true,
       orderId,
       updated: false,
       pending: true,
+      paymentStatus: pending?.status || "pending",
+      paymentId: pending?.id ? String(pending.id) : undefined,
     });
   } catch (e) {
     console.error(e);

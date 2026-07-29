@@ -68,6 +68,20 @@ service cloud.firestore {
               .hasOnly(['paymentStatus', 'status', 'mpPaymentId', 'mpPreferenceId', 'updatedAt'])
         )
         || (
+          // Cancelamento automático por falta de pagamento (15 min)
+          resource.data.paymentStatus == 'pending'
+          && resource.data.status == 'awaiting_payment'
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.paymentStatus == 'cancelled'
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'paymentStatus', 'updatedAt', 'cancelReason'])
+          && (
+            ('expiresAt' in resource.data
+              && request.time.toMillis() >= resource.data.expiresAt)
+            || request.time.toMillis() >= resource.data.createdAt + 900000
+          )
+        )
+        || (
           request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['customerConfirmedDelivery', 'status', 'updatedAt'])
           && request.resource.data.customerConfirmedDelivery == true

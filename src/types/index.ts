@@ -105,6 +105,9 @@ export interface Order {
   refundId?: string;
   customerConfirmedDelivery?: boolean;
   reviewed?: boolean;
+  /** Timestamp ms — após isso, pedido pendente é cancelado */
+  expiresAt?: number;
+  cancelReason?: string;
   createdAt: number;
   updatedAt: number;
 }

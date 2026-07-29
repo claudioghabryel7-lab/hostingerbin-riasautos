@@ -15,9 +15,13 @@ import {
   subscribeOrder,
 } from "@/lib/store";
 import { formatCurrency, orderStatusStep } from "@/lib/utils";
+import {
+  formatCountdown,
+  isPaymentExpired,
+  remainingPaymentMs,
+} from "@/lib/payment-timeout";
+import { expireOrderIfNeeded } from "@/lib/expire-order-client";
 import { ORDER_STATUS_LABELS, type Order } from "@/types";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 const STEPS_DELIVERY = [
   { key: "received", label: "Pedido recebido" },
@@ -48,6 +52,7 @@ export function OrderTracker({
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [reviewDone, setReviewDone] = useState(false);
+  const [remainMs, setRemainMs] = useState(0);
 
   useEffect(() => {
     return subscribeOrder(orderId, setOrder);
@@ -62,25 +67,50 @@ export function OrderTracker({
     }
   }, [order, orderId]);
 
+  // Expira pedido sem pagamento em 15 min
+  useEffect(() => {
+    if (!order) return;
+    if (order.paymentStatus === "approved") return;
+    if (order.status === "cancelled" || order.status === "rejected") return;
+    if (order.paymentStatus !== "pending") return;
+
+    const tick = async () => {
+      setRemainMs(remainingPaymentMs(order));
+      if (isPaymentExpired(order)) {
+        await expireOrderIfNeeded(order);
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [order]);
+
   useEffect(() => {
     if (!order || order.paymentStatus === "approved") return;
-    if (paymentHint !== "success" && !order.mpPreferenceId) return;
+    if (order.status === "cancelled") return;
+    // Embutido usa mpPaymentId; checkout antigo usava mpPreferenceId
+    const canPoll =
+      paymentHint === "success" ||
+      Boolean(order.mpPaymentId) ||
+      Boolean(order.mpPreferenceId) ||
+      order.paymentStatus === "pending";
+    if (!canPoll) return;
 
     let cancelled = false;
     const confirmPayment = async () => {
-      const res = await fetch("/api/payments/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-      const data = await res.json();
-      if (data.clientUpdate && data.paymentStatus === "approved") {
-        await updateDoc(doc(db, "orders", orderId), {
-          status: "received",
-          paymentStatus: "approved",
-          mpPaymentId: data.paymentId ? String(data.paymentId) : null,
-          updatedAt: Date.now(),
-        });
+      const { confirmPaymentOnClient } = await import(
+        "@/lib/confirm-payment-client"
+      );
+      const data = await confirmPaymentOnClient(
+        orderId,
+        order.mpPaymentId || undefined
+      );
+      if (
+        data.clientUpdate &&
+        data.paymentStatus === "approved" &&
+        !data.clientApplied &&
+        data.paymentId
+      ) {
         await incrementMenuOrderCounts(order.items || []).catch(() => undefined);
       }
       return data;
@@ -103,7 +133,7 @@ export function OrderTracker({
       } catch {
         /* ignore */
       }
-    }, 5000);
+    }, 4000);
 
     return () => {
       cancelled = true;
@@ -226,7 +256,18 @@ export function OrderTracker({
                   : "Pedido concluído — obrigado!"}
           </p>
 
-          {order.paymentStatus === "pending" && (
+          {order.paymentStatus === "pending" &&
+            order.status === "awaiting_payment" && (
+              <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                Tempo restante para pagar:{" "}
+                <strong>{formatCountdown(remainMs)}</strong>
+                <span className="mt-1 block text-xs opacity-80">
+                  Após 15 minutos sem pagamento o pedido é cancelado.
+                </span>
+              </div>
+            )}
+
+          {order.paymentStatus === "pending" && order.status !== "cancelled" && (
             <div className="mt-4">
               <Link
                 href={`/pedido/${orderId}/pagar`}
@@ -235,6 +276,12 @@ export function OrderTracker({
                 Pagar agora no site (Pix ou cartão)
               </Link>
             </div>
+          )}
+
+          {order.cancelReason === "payment_timeout" && (
+            <p className="mt-4 text-sm text-amber-200">
+              Cancelado automaticamente por falta de pagamento (15 minutos).
+            </p>
           )}
 
           {!rejected && (
