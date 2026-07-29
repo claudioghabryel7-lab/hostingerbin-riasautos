@@ -311,8 +311,8 @@ export function OrderTracker({
             active={waitingFlow}
             subtitle={
               order.fulfillment === "pickup"
-                ? "Jogue até retirar e confirmar o pedido."
-                : "Jogue até a entrega chegar e você confirmar."
+                ? "Sushi Crush enquanto espera a retirada — combine 3 iguais!"
+                : "Sushi Crush enquanto a entrega chega — combine 3 iguais!"
             }
           />
 
