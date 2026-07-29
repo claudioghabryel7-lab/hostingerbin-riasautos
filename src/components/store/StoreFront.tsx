@@ -657,7 +657,6 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
   const { user, profile, updateCustomerProfile } = useAuth();
   const [step, setStep] = useState<"cart" | "checkout">("cart");
   const [fulfillment, setFulfillment] = useState<FulfillmentType>("delivery");
-  const [payMethod, setPayMethod] = useState<"pix" | "card">("pix");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -776,31 +775,9 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
       if (guestToken) rememberGuestOrder(orderId, guestToken);
 
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, paymentMethod: payMethod }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha no checkout");
-
-      if (data.preferenceId) {
-        const { doc, updateDoc } = await import("firebase/firestore");
-        const { db } = await import("@/lib/firebase");
-        await updateDoc(doc(db, "orders", orderId), {
-          mpPreferenceId: data.preferenceId,
-          updatedAt: Date.now(),
-        });
-      }
-
       cart.clear();
       cart.setOpen(false);
-
-      if (data.initPoint) {
-        window.location.href = data.initPoint;
-      } else {
-        router.push(`/pedido/${orderId}`);
-      }
+      router.push(`/pedido/${orderId}/pagar`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao finalizar");
     } finally {
@@ -979,36 +956,9 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     </p>
                   )}
 
-                  <div>
-                    <p className="mb-2 text-sm text-[var(--rice-dim)]">
-                      Como deseja pagar?
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPayMethod("pix")}
-                        className={cn(
-                          "rounded-2xl border px-3 py-4 text-sm font-semibold",
-                          payMethod === "pix"
-                            ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
-                            : "border-white/10 bg-black/20"
-                        )}
-                      >
-                        Pix
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPayMethod("card")}
-                        className={cn(
-                          "rounded-2xl border px-3 py-4 text-sm font-semibold",
-                          payMethod === "card"
-                            ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
-                            : "border-white/10 bg-black/20"
-                        )}
-                      >
-                        Cartão
-                      </button>
-                    </div>
+                  <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-sm text-[var(--rice-dim)]">
+                    No próximo passo você paga <strong className="text-[var(--rice)]">Pix (QR Code)</strong> ou{" "}
+                    <strong className="text-[var(--rice)]">cartão</strong> direto no site — sem redirecionar.
                   </div>
                 </div>
               )}
@@ -1073,7 +1023,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     disabled={submitting || !settings.isOpen}
                     onClick={checkout}
                   >
-                    {submitting ? "Finalizando..." : "Finalizar pedido"}
+                    {submitting ? "Abrindo pagamento..." : "Pagar no site"}
                   </Button>
                 </div>
               )}

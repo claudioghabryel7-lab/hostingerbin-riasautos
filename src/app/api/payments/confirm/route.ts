@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     if (paymentId) {
       const payment = await paymentApi.get({ id: paymentId });
-      const ref = String(payment.external_reference || "");
+      const ref = String(payment.external_reference || orderId || "");
       if (payment.status === "approved" && ref) {
         const ok = await markPaid(ref, String(payment.id));
         return NextResponse.json({
@@ -40,12 +40,17 @@ export async function POST(req: NextRequest) {
           orderId: ref,
           updated: ok,
           status: payment.status,
+          paymentStatus: "approved",
+          paymentId: String(payment.id),
         });
       }
       return NextResponse.json({
         ok: true,
         status: payment.status,
+        paymentStatus: payment.status,
         updated: false,
+        paymentId: String(payment.id || paymentId),
+        orderId: ref || orderId,
       });
     }
 
