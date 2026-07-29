@@ -7,10 +7,7 @@ import {
 
 export const runtime = "nodejs";
 
-async function cancelOrder(
-  orderId: string,
-  data: Record<string, unknown>
-): Promise<boolean> {
+async function cancelOrder(orderId: string): Promise<boolean> {
   try {
     const { getAdminDb } = await import("@/lib/firebase-admin");
     await getAdminDb()
@@ -77,7 +74,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const updated = await cancelOrder(orderId, {});
+      const updated = await cancelOrder(orderId);
       return NextResponse.json({
         ok: true,
         expired: true,
