@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,7 +139,7 @@ export function AdminOrdersPage() {
               {order.items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3 text-sm">
                   <div className="relative size-10 overflow-hidden rounded-lg">
-                    <Image src={item.imageUrl} alt="" fill className="object-cover" />
+                    <DbImage src={item.imageUrl} alt="" fill className="object-cover" />
                   </div>
                   <span className="flex-1">
                     {item.quantity}x {item.name}

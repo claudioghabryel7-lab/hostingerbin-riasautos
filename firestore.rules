@@ -1,43 +1,32 @@
 rules_version = '2';
 
+// App sem Firebase Auth: tudo no Firestore (contas, pedidos, cardápio, imagens).
+// Publique estas regras no Firebase Console para o site funcionar.
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-
     match /store/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /menuItems/{itemId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /orders/{orderId} {
-      allow create: if true;
-      allow read: if true;
-      allow update: if isAdmin()
-        || (request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['paymentStatus', 'status', 'mpPaymentId', 'mpPreferenceId', 'refundId', 'updatedAt'])
-            && resource.data.paymentStatus == 'pending');
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /users/{uid} {
-      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
+    match /images/{imageId} {
+      allow read, write: if true;
+    }
+
+    // legado
     match /admins/{uid} {
-      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

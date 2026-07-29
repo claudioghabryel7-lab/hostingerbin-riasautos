@@ -1,43 +1,26 @@
-# Frysuroll
+# Fry Sushi (Goiânia)
 
-Site de delivery de sushi com duas faces:
+Site Next.js de delivery de sushi frito. **Tudo fica no Firestore** (contas, cardápio, pedidos, imagens em base64). Sem Firebase Authentication.
 
-- **Loja (cliente):** vitrine com fotos grandes, categorias, sacola fixa, checkout Mercado Pago e acompanhamento em tempo real.
-- **Painel (dono):** abrir/fechar loja, gerenciar cardápio (fotos editáveis), pedidos com alerta sonoro, aceitar / sair para entrega / finalizar, e **recusar com estorno automático** no Mercado Pago.
+## Importante: regras do banco
 
-## Stack
+No Firebase Console → Firestore → Rules, publique o arquivo `firestore.rules` deste repositório. Sem isso aparece **Missing or insufficient permissions**.
 
-- Next.js 16 + React 19 + Tailwind 4
-- Firebase Auth, Firestore e Storage (configuração do projeto preservada)
-- Mercado Pago Checkout Pro (preferência + webhook + refund)
+## Contas
 
-## Configuração
+- Cliente: `/entrar` (cadastro/login gravado na coleção `users`)
+- Colaborador: `/admin/login` (role `collaborator` no Firestore)
+- Primeiro colaborador não precisa de código; os próximos usam `NEXT_PUBLIC_ADMIN_INVITE` (padrão `frysushi-admin`)
 
-1. Copie `.env.example` para `.env.local` e preencha as chaves do Mercado Pago.
-2. No Firebase Console:
-   - Ative **Authentication** (e-mail/senha)
-   - Publique `firestore.rules` e `storage.rules`
-   - Crie índices se o console pedir (pedidos por `createdAt` / `status`)
-3. Rode:
+## Imagens
+
+Uploads no painel são comprimidos e salvos na coleção `images` + campo `imageUrl` do item (data URL no banco).
+
+## Mercado Pago
+
+Configure `.env.local` a partir de `.env.example`.
 
 ```bash
 npm install
 npm run dev
 ```
-
-4. Acesse a loja em `/` e o painel em `/admin/login` (crie o primeiro usuário admin).
-
-## Autonomia do admin
-
-- Trocar **hero**, **logo** e **fotos dos pratos** pelo painel (upload no Storage)
-- Alterar preços e disponibilidade (item some da loja na hora)
-- Abrir/fechar a loja com mensagem customizada
-- Recusar pedido pago → API estorna no Mercado Pago e o status atualiza para o cliente
-
-## Webhook Mercado Pago
-
-Configure a URL de notificação:
-
-`https://SEU_DOMINIO/api/webhooks/mercadopago`
-
-Opcional: `FIREBASE_SERVICE_ACCOUNT` (JSON) para o servidor gravar confirmações sem depender do cliente.

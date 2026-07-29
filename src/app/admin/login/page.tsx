@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import Link from "next/link";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
       <div className="glass-panel relative w-full max-w-md rounded-3xl p-8">
         <div className="mb-6 flex items-center gap-3">
-          <Image
+          <DbImage
             src="/images/logo-fry-sushi.png"
             alt="Fry Sushi"
             width={56}
@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
           />
           <div>
             <p className="font-display text-3xl">Fry Sushi</p>
-            <p className="text-sm text-[var(--rice-dim)]">Painel do dono</p>
+            <p className="text-sm text-[var(--rice-dim)]">Painel do colaborador</p>
           </div>
         </div>
 
@@ -113,8 +113,8 @@ export default function AdminLoginPage() {
             {busy
               ? "Entrando..."
               : mode === "login"
-                ? "Entrar no painel"
-                : "Criar acesso admin"}
+                ? "Entrar como colaborador"
+                : "Criar acesso de colaborador"}
           </Button>
         </form>
 
@@ -124,7 +124,7 @@ export default function AdminLoginPage() {
           onClick={() => setMode(mode === "login" ? "register" : "login")}
         >
           {mode === "login"
-            ? "Primeiro acesso? Criar conta admin"
+            ? "Primeiro acesso? Criar conta de colaborador"
             : "Já tenho conta"}
         </button>
 

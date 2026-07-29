@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAdminAuth";
@@ -103,7 +103,7 @@ export default function EntrarClient() {
         <div className="pointer-events-none absolute inset-0 pattern-overlay" />
         <div className="glass-panel relative w-full max-w-md rounded-3xl p-8">
           <div className="mb-6 flex items-center gap-3">
-            <Image
+            <DbImage
               src="/images/logo-fry-sushi.png"
               alt="Fry Sushi"
               width={56}
@@ -141,7 +141,7 @@ export default function EntrarClient() {
             {isAdmin && (
               <Link href="/admin">
                 <Button variant="secondary" className="w-full">
-                  Abrir painel admin
+                  Abrir painel do colaborador
                 </Button>
               </Link>
             )}
@@ -165,7 +165,7 @@ export default function EntrarClient() {
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
       <div className="glass-panel relative w-full max-w-md rounded-3xl p-8">
         <div className="mb-6 flex items-center gap-3">
-          <Image
+          <DbImage
             src="/images/logo-fry-sushi.png"
             alt="Fry Sushi"
             width={56}
@@ -234,9 +234,9 @@ export default function EntrarClient() {
         </button>
 
         <p className="mt-6 text-center text-xs text-[var(--rice-dim)]">
-          Dono da loja?{" "}
+          Colaborador?{" "}
           <Link href="/admin/login" className="text-[var(--salmon)]">
-            Acessar painel
+            Acessar o painel
           </Link>
         </p>
         <Link

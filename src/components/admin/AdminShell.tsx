@@ -94,7 +94,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between px-4 py-4 md:block">
           <div>
             <p className="font-display text-2xl">Fry Sushi</p>
-            <p className="text-xs text-[var(--rice-dim)]">Centro de comando · Goiânia</p>
+            <p className="text-xs text-[var(--rice-dim)]">Painel do colaborador · Goiânia</p>
           </div>
           <Button
             size="sm"

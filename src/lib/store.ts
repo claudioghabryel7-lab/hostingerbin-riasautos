@@ -11,8 +11,8 @@ import {
   orderBy,
   type Unsubscribe,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { fileToDbImage, saveImageToDb } from "@/lib/db-auth";
 import { DEFAULT_MENU, DEFAULT_SETTINGS } from "@/data/defaults";
 import type { MenuItem, Order, OrderStatus, StoreSettings } from "@/types";
 
@@ -163,12 +163,10 @@ export async function updateMenuItem(id: string, data: Partial<MenuItem>) {
   });
 }
 
+/** Comprime e grava a imagem no Firestore (sem Storage / sem Auth). */
 export async function uploadImage(file: File, folder = "menu") {
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-  const path = `${folder}/${Date.now()}-${safe}`;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file, { contentType: file.type });
-  return getDownloadURL(storageRef);
+  const dataUrl = await fileToDbImage(file);
+  return saveImageToDb(dataUrl, folder);
 }
 
 export async function createOrder(

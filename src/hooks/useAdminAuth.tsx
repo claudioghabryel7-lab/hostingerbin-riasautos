@@ -10,27 +10,17 @@ import {
   type ReactNode,
 } from "react";
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  type User,
-} from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  query,
-  setDoc,
-} from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+  clearSession,
+  loginAccount,
+  registerAccount,
+  restoreSession,
+  updateAccountProfile,
+  type SessionUser,
+} from "@/lib/db-auth";
 import type { UserProfile } from "@/types";
 
 interface AuthValue {
-  user: User | null;
+  user: SessionUser | null;
   profile: UserProfile | null;
   isAdmin: boolean;
   loading: boolean;
@@ -53,47 +43,75 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-async function loadProfile(uid: string) {
-  const snap = await getDoc(doc(db, "users", uid));
-  return snap.exists() ? (snap.data() as UserProfile) : null;
-}
-
-async function loadIsAdmin(uid: string) {
-  const snap = await getDoc(doc(db, "admins", uid));
-  return snap.exists();
+function toProfile(account: {
+  uid?: string;
+  id?: string;
+  email: string;
+  name: string;
+  phone: string;
+  address?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  createdAt: number;
+  updatedAt?: number;
+}): UserProfile {
+  return {
+    uid: account.uid || account.id || "",
+    email: account.email,
+    name: account.name,
+    phone: account.phone,
+    address: account.address,
+    complement: account.complement,
+    neighborhood: account.neighborhood,
+    city: account.city || "Goiânia",
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (!u) {
-        setProfile(null);
-        setIsAdmin(false);
-        setLoading(false);
-        return;
+    let alive = true;
+    (async () => {
+      try {
+        const restored = await restoreSession();
+        if (!alive) return;
+        if (!restored) {
+          setLoading(false);
+          return;
+        }
+        const p = toProfile(restored.account);
+        setUser({
+          uid: p.uid,
+          email: p.email,
+          displayName: p.name,
+        });
+        setProfile(p);
+        setIsAdmin(restored.account.role === "collaborator");
+      } catch {
+        clearSession();
+      } finally {
+        if (alive) setLoading(false);
       }
-      const [p, admin] = await Promise.all([
-        loadProfile(u.uid),
-        loadIsAdmin(u.uid),
-      ]);
-      setProfile(p);
-      setIsAdmin(admin);
-      setLoading(false);
-    });
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    const admin = await loadIsAdmin(cred.user.uid);
-    const p = await loadProfile(cred.user.uid);
-    setIsAdmin(admin);
+    const { account, session } = await loginAccount(email, password);
+    const p = toProfile(account);
+    const admin = session.role === "collaborator";
+    setUser({ uid: p.uid, email: p.email, displayName: p.name });
     setProfile(p);
+    setIsAdmin(admin);
     return { isAdmin: admin };
   }, []);
 
@@ -104,23 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: string;
       phone: string;
     }) => {
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        data.password
-      );
-      await updateProfile(cred.user, { displayName: data.name });
-      const profileData: UserProfile = {
-        uid: cred.user.uid,
-        email: data.email,
-        name: data.name,
-        phone: data.phone,
-        city: "Goiânia",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      await setDoc(doc(db, "users", cred.user.uid), profileData);
-      setProfile(profileData);
+      const { account } = await registerAccount({
+        ...data,
+        role: "customer",
+      });
+      const p = toProfile(account);
+      setUser({ uid: p.uid, email: p.email, displayName: p.name });
+      setProfile(p);
       setIsAdmin(false);
     },
     []
@@ -133,44 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name?: string;
       inviteCode?: string;
     }) => {
-      const adminsSnap = await getDocs(
-        query(collection(db, "admins"), limit(1))
-      );
-      const expected = process.env.NEXT_PUBLIC_ADMIN_INVITE || "frysushi-admin";
-      const canCreate =
-        adminsSnap.empty || data.inviteCode === expected;
-
-      if (!canCreate) {
-        throw new Error(
-          "Código de convite inválido. Peça o código ao dono da loja."
-        );
-      }
-
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        data.email,
-        data.password
-      );
-      const name = data.name || "Admin Fry Sushi";
-      await updateProfile(cred.user, { displayName: name });
-      await setDoc(doc(db, "admins", cred.user.uid), {
+      const { account } = await registerAccount({
         email: data.email,
-        name,
-        createdAt: Date.now(),
+        password: data.password,
+        name: data.name || "Colaborador Fry Sushi",
+        phone: "(62) 99504-5038",
+        role: "collaborator",
+        inviteCode: data.inviteCode,
       });
-      await setDoc(
-        doc(db, "users", cred.user.uid),
-        {
-          uid: cred.user.uid,
-          email: data.email,
-          name,
-          phone: "(62) 99504-5038",
-          city: "Goiânia",
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        } satisfies UserProfile,
-        { merge: true }
-      );
+      const p = toProfile(account);
+      setUser({ uid: p.uid, email: p.email, displayName: p.name });
+      setProfile(p);
       setIsAdmin(true);
     },
     []
@@ -178,18 +159,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateCustomerProfile = useCallback(
     async (data: Partial<UserProfile>) => {
-      if (!auth.currentUser) throw new Error("Faça login primeiro");
-      const uid = auth.currentUser.uid;
-      const payload = { ...data, updatedAt: Date.now() };
-      await setDoc(doc(db, "users", uid), payload, { merge: true });
-      const next = await loadProfile(uid);
-      setProfile(next);
+      if (!user) throw new Error("Faça login primeiro");
+      const next = await updateAccountProfile(user.uid, data);
+      if (next) setProfile(toProfile(next));
     },
-    []
+    [user]
   );
 
   const logout = useCallback(async () => {
-    await signOut(auth);
+    clearSession();
+    setUser(null);
     setProfile(null);
     setIsAdmin(false);
   }, []);
@@ -222,7 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-/** @deprecated use useAuth */
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
@@ -243,7 +221,7 @@ export function useAdminAuth() {
       const res = await authValue.login(email, password);
       if (!res.isAdmin) {
         await authValue.logout();
-        throw new Error("Esta conta não é de administrador.");
+        throw new Error("Esta conta não é de colaborador.");
       }
     },
     register: async (

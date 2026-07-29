@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -90,7 +90,7 @@ export function StoreFront() {
       <header className="sticky top-0 z-40 border-b border-white/8 bg-[color-mix(in_oklab,var(--ink)_78%,transparent)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
-            <Image
+            <DbImage
               src={settings.logoUrl || "/images/logo-fry-sushi.png"}
               alt="Fry Sushi"
               width={52}
@@ -146,7 +146,7 @@ export function StoreFront() {
                     href="/admin"
                     className="hidden rounded-full bg-white/8 px-3 py-1.5 text-xs sm:inline"
                   >
-                    Painel
+                    Colaborador
                   </Link>
                 )}
                 <Link
@@ -191,7 +191,7 @@ export function StoreFront() {
       </header>
 
       <section className="relative min-h-[88vh] w-full overflow-hidden">
-        <Image
+        <DbImage
           src={settings.heroImageUrl || "/images/hero-sushi.jpg"}
           alt="Fry Sushi Goiânia"
           fill
@@ -207,7 +207,7 @@ export function StoreFront() {
             transition={{ duration: 0.55 }}
             className="mb-5"
           >
-            <Image
+            <DbImage
               src={settings.logoUrl || "/images/logo-fry-sushi.png"}
               alt="Fry Sushi"
               width={120}
@@ -423,7 +423,7 @@ function MenuCard({
       onClick={onOpen}
     >
       <div className="relative aspect-[4/5] w-full">
-        <Image
+        <DbImage
           src={item.imageUrl}
           alt={item.name}
           fill
@@ -486,7 +486,7 @@ function ItemModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative h-72 w-full">
-          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" />
+          <DbImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
           <button
             onClick={onClose}
             className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white backdrop-blur"
@@ -686,7 +686,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     {cart.items.map((item) => (
                       <li key={item.id} className="flex gap-3">
                         <div className="relative size-16 overflow-hidden rounded-xl">
-                          <Image
+                          <DbImage
                             src={item.imageUrl}
                             alt={item.name}
                             fill

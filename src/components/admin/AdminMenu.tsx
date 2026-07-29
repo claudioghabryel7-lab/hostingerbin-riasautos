@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,7 +106,7 @@ export function AdminMenuPage() {
 
       <div className="glass-panel mb-8 grid gap-4 rounded-2xl p-5 md:grid-cols-[180px_1fr]">
         <label className="relative block aspect-square cursor-pointer overflow-hidden rounded-2xl bg-black/30">
-          <Image src={form.imageUrl} alt="" fill className="object-cover" />
+          <DbImage src={form.imageUrl} alt="" fill className="object-cover" />
           <input
             type="file"
             accept="image/*"
@@ -215,7 +215,7 @@ export function AdminMenuPage() {
             className="overflow-hidden rounded-2xl border border-white/8 bg-[var(--ink-soft)]"
           >
             <div className="relative h-40">
-              <Image src={item.imageUrl} alt={item.name} fill className="object-cover" />
+              <DbImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
               {!item.available && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm">
                   Invisível na loja

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { subscribeOrder } from "@/lib/store";
@@ -162,7 +162,7 @@ export function OrderTracker({
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center gap-3">
                 <div className="relative size-12 overflow-hidden rounded-lg">
-                  <Image src={item.imageUrl} alt={item.name} fill className="object-cover" />
+                  <DbImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">

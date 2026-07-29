@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { DbImage } from "@/components/ui/DbImage";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -168,7 +168,7 @@ export function AdminSettingsPage() {
           <div>
             <p className="mb-2 text-sm text-[var(--rice-dim)]">Imagem hero (vitrine)</p>
             <label className="relative block h-40 cursor-pointer overflow-hidden rounded-2xl">
-              <Image src={form.heroImageUrl} alt="" fill className="object-cover" />
+              <DbImage src={form.heroImageUrl} alt="" fill className="object-cover" />
               <input
                 type="file"
                 accept="image/*"
@@ -185,7 +185,7 @@ export function AdminSettingsPage() {
           <div>
             <p className="mb-2 text-sm text-[var(--rice-dim)]">Logo</p>
             <label className="relative mx-auto block size-40 cursor-pointer overflow-hidden rounded-2xl">
-              <Image src={form.logoUrl} alt="" fill className="object-cover" />
+              <DbImage src={form.logoUrl} alt="" fill className="object-cover" />
               <input
                 type="file"
                 accept="image/*"
