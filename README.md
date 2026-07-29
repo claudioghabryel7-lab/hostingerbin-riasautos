@@ -2,40 +2,35 @@
 
 Next.js + Firebase projeto **`gestorfinan-88c9c`**.
 
-## Segurança (importante)
+## Variáveis na Vercel (obrigatório)
 
-As regras do Firestore **não são públicas**. Login usa **Firebase Authentication** (e-mail/senha). Senhas **não** ficam no banco — só o perfil em `users/{uid}`. Colaboradores ficam em `collaborators/{uid}`.
+Em **Project → Settings → Environment Variables**, configure (Production + Preview):
 
-### O que fazer agora no Console
+| Nome | Obrigatória | Exemplo / nota |
+|------|-------------|----------------|
+| `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | Sim | `APP_USR-...` (chave pública) |
+| `MERCADOPAGO_ACCESS_TOKEN` | Sim | `APP_USR-...` (Access Token — **nunca** publique no front) |
+| `MERCADOPAGO_CLIENT_ID` | Recomendada | ID da aplicação MP |
+| `MERCADOPAGO_CLIENT_SECRET` | Recomendada | Secret da aplicação MP |
+| `NEXT_PUBLIC_APP_URL` | Sim | URL do site, ex. `https://seu-projeto.vercel.app` (sem `/` no final) |
+| `FIREBASE_PROJECT_ID` | Sim | `gestorfinan-88c9c` |
+| `FIREBASE_STORAGE_BUCKET` | Sim | `gestorfinan-88c9c.firebasestorage.app` |
+| `NEXT_PUBLIC_ADMIN_INVITE` | Sim | `frysushi-admin` |
+| `NEXT_PUBLIC_ADMIN_EMAIL` | Opcional | e-mail do 1º colaborador |
+| `FIREBASE_SERVICE_ACCOUNT` | Recomendada | JSON da service account **em uma linha** (webhooks/estorno) |
+| `FIREBASE_TOKEN` | Opcional | só para publicar regras via CLI |
 
-1. **Authentication** → Sign-in method → ative **E-mail/senha**
-2. **Firestore → Rules** → cole o arquivo `firestore.rules` deste repo → **Publish**
-   - Ou: `npm run firebase:rules` (precisa de `FIREBASE_TOKEN`)
+Depois de salvar, faça **Redeploy**. Sem `MERCADOPAGO_ACCESS_TOKEN` o checkout mostra erro ao finalizar.
 
-Sem publicar as regras novas, o aviso do Firebase (“qualquer pessoa pode roubar…”) continua válido.
+## Segurança Firebase
 
-### Contas antigas (hash no Firestore)
-
-Contas criadas no modo antigo (senha no documento) **não** entram mais. Cliente e colaborador precisam **cadastrar de novo** com Firebase Auth.
-
-- 1º colaborador: `/admin/login` → “Criar conta” (sem convite)
-- Próximos: código `frysushi-admin` (`NEXT_PUBLIC_ADMIN_INVITE`)
-- Cliente: `/entrar` → ganha 10% OFF na conta
-
-## Config Firebase (já no código)
-
-```js
-projectId: "gestorfinan-88c9c"
-```
+1. Authentication → ative **E-mail/senha**
+2. Firestore → Rules → publique `firestore.rules`
 
 ## Scripts
 
 ```bash
 npm install
 npm run dev
-npm run firebase:rules   # publica regras no gestorfinan-88c9c
+npm run firebase:rules
 ```
-
-## Mercado Pago
-
-Copie `.env.example` → `.env.local` e preencha as chaves. Em produção, defina `NEXT_PUBLIC_APP_URL` com a URL pública.

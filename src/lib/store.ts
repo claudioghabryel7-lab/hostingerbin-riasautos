@@ -49,9 +49,8 @@ function normalizeSettings(data?: Partial<StoreSettings> | null): StoreSettings 
   if (!merged.address || merged.address === "Delivery de sushi quentinho") {
     merged.address = DEFAULT_SETTINGS.address;
   }
-  if (!merged.logoUrl || merged.logoUrl.includes("logo-mark.svg")) {
-    merged.logoUrl = DEFAULT_SETTINGS.logoUrl;
-  }
+  // Sempre força a logo Fry Sushi (evita ícone antigo / de outro app)
+  merged.logoUrl = DEFAULT_SETTINGS.logoUrl;
   if (!merged.storeName || merged.storeName === "Frysuroll") {
     merged.storeName = DEFAULT_SETTINGS.storeName;
   }

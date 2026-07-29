@@ -3,6 +3,7 @@ import { Rowdies, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/hooks/useCart";
 import { AuthProvider } from "@/hooks/useAdminAuth";
+import { SiteChatbot } from "@/components/store/SiteChatbot";
 
 const display = Rowdies({
   variable: "--font-display",
@@ -16,13 +17,63 @@ const body = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+  "https://frysushi.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Fry Sushi — Hot rolls em Goiânia",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Fry Sushi — Hot rolls em Goiânia",
+    template: "%s · Fry Sushi",
+  },
   description:
     "Delivery de sushi frito em Goiânia. Big Hots crocantes, cardápio visual e pedido rápido.",
   applicationName: "Fry Sushi",
+  authors: [{ name: "Fry Sushi" }],
+  creator: "Fry Sushi",
+  publisher: "Fry Sushi",
+  keywords: [
+    "Fry Sushi",
+    "sushi Goiânia",
+    "hot roll",
+    "delivery sushi",
+    "Big Hot",
+  ],
   icons: {
-    icon: "/images/logo-fry-sushi.png",
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+      { url: "/images/logo-fry-sushi.png", type: "image/png", sizes: "1024x1024" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/icon.png"],
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: siteUrl,
+    siteName: "Fry Sushi",
+    title: "Fry Sushi — Hot rolls em Goiânia",
+    description:
+      "Delivery de sushi frito em Goiânia. Big Hots crocantes e pedido rápido.",
+    images: [
+      {
+        url: "/images/og-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Logo Fry Sushi",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Fry Sushi — Hot rolls em Goiânia",
+    description:
+      "Delivery de sushi frito em Goiânia. Big Hots crocantes e pedido rápido.",
+    images: ["/images/og-logo.png"],
+  },
+  other: {
+    "og:logo": `${siteUrl}/images/logo-fry-sushi.png`,
   },
 };
 
@@ -44,7 +95,10 @@ export default function RootLayout({
     >
       <body className="min-h-screen font-sans text-[var(--rice)]">
         <AuthProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            {children}
+            <SiteChatbot />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

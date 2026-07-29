@@ -5,11 +5,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { DbImage } from "@/components/ui/DbImage";
 import { Button } from "@/components/ui/button";
+import { SushiGame } from "@/components/store/SushiGame";
 import {
   confirmCustomerDelivery,
   createReview,
   getGuestTokenForOrder,
   incrementMenuOrderCounts,
+  rememberGuestOrder,
   subscribeOrder,
 } from "@/lib/store";
 import { formatCurrency, orderStatusStep } from "@/lib/utils";
@@ -31,6 +33,8 @@ const STEPS_PICKUP = [
   { key: "completed", label: "Retirado" },
 ] as const;
 
+const LOGO = "/images/logo-fry-sushi.png";
+
 export function OrderTracker({
   orderId,
   paymentHint,
@@ -49,6 +53,15 @@ export function OrderTracker({
     return subscribeOrder(orderId, setOrder);
   }, [orderId]);
 
+  // Garante sessão temporária de visitante neste aparelho
+  useEffect(() => {
+    if (!order?.isGuest || !order.guestToken) return;
+    const existing = getGuestTokenForOrder(orderId);
+    if (!existing) {
+      rememberGuestOrder(orderId, order.guestToken);
+    }
+  }, [order, orderId]);
+
   useEffect(() => {
     if (!order || order.paymentStatus === "approved") return;
     if (paymentHint !== "success" && !order.mpPreferenceId) return;
@@ -62,7 +75,6 @@ export function OrderTracker({
       });
       const data = await res.json();
       if (data.clientUpdate && data.paymentStatus === "approved") {
-        // Fallback se o Admin SDK não estiver configurado no servidor
         await updateDoc(doc(db, "orders", orderId), {
           status: "received",
           paymentStatus: "approved",
@@ -117,13 +129,19 @@ export function OrderTracker({
   const steps =
     order.fulfillment === "pickup" ? STEPS_PICKUP : STEPS_DELIVERY;
 
+  const paid = order.paymentStatus === "approved";
+  const waitingFlow =
+    paid &&
+    !rejected &&
+    !order.customerConfirmedDelivery &&
+    order.status !== "completed";
+
   const canConfirmDelivery =
     guestOk &&
-    !order.customerConfirmedDelivery &&
+    waitingFlow &&
     ["out_for_delivery", "ready_for_pickup", "preparing", "received"].includes(
       order.status
-    ) &&
-    order.paymentStatus === "approved";
+    );
 
   const canReview =
     guestOk &&
@@ -167,11 +185,18 @@ export function OrderTracker({
     <div className="relative min-h-screen px-4 py-10">
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
       <div className="relative mx-auto max-w-lg">
-        <Link
-          href="/"
-          className="font-display text-2xl text-[var(--rice)] hover:text-[var(--salmon)]"
-        >
-          Fry Sushi
+        <Link href="/" className="inline-flex items-center gap-3">
+          <DbImage
+            src={LOGO}
+            alt="Fry Sushi"
+            width={48}
+            height={48}
+            className="rounded-full"
+            priority
+          />
+          <span className="font-display text-2xl text-[var(--rice)]">
+            Fry Sushi
+          </span>
         </Link>
 
         <motion.div
@@ -181,7 +206,7 @@ export function OrderTracker({
         >
           <p className="text-sm text-[var(--rice-dim)]">
             Pedido #{order.id.slice(0, 8)}
-            {order.isGuest ? " · pedido rápido" : ""}
+            {order.isGuest ? " · acesso temporário neste aparelho" : ""}
           </p>
           <h1 className="font-display mt-2 text-3xl">
             {rejected
@@ -196,7 +221,9 @@ export function OrderTracker({
                 : "Aguardando confirmação do pagamento."
               : order.paymentStatus === "refunded"
                 ? "O valor foi estornado automaticamente."
-                : "Acompanhe em tempo real — sem precisar ligar."}
+                : waitingFlow
+                  ? "Acompanhe o status e jogue enquanto espera. Quando receber, confirme abaixo."
+                  : "Pedido concluído — obrigado!"}
           </p>
 
           {!rejected && (
@@ -221,6 +248,15 @@ export function OrderTracker({
               </div>
             </div>
           )}
+
+          <SushiGame
+            active={waitingFlow}
+            subtitle={
+              order.fulfillment === "pickup"
+                ? "Jogue até retirar e confirmar o pedido."
+                : "Jogue até a entrega chegar e você confirmar."
+            }
+          />
 
           <div className="mt-8 space-y-3 border-t border-white/8 pt-6">
             {order.items.map((item) => (
@@ -274,10 +310,11 @@ export function OrderTracker({
           {canConfirmDelivery && (
             <div className="mt-6 space-y-2">
               <p className="text-sm text-[var(--rice-dim)]">
-                Recebeu o pedido? Confirme a entrega para avaliar.
+                Recebeu o pedido? Confirme para finalizar e avaliar.
               </p>
               <Button
                 className="w-full"
+                size="lg"
                 disabled={busy}
                 onClick={onConfirmDelivery}
               >
@@ -295,6 +332,9 @@ export function OrderTracker({
           {canReview && (
             <div className="mt-6 space-y-3 border-t border-white/8 pt-6">
               <h2 className="font-display text-xl">Avalie seu pedido</h2>
+              <p className="text-sm text-[var(--rice-dim)]">
+                Seu acesso temporário neste aparelho permite avaliar sem login.
+              </p>
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button

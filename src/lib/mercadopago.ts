@@ -1,9 +1,15 @@
 import { MercadoPagoConfig, Preference, Payment, PaymentRefund } from "mercadopago";
 
 export function getMercadoPagoClient() {
-  const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const accessToken = (
+    process.env.MERCADOPAGO_ACCESS_TOKEN ||
+    process.env.MP_ACCESS_TOKEN ||
+    ""
+  ).trim();
   if (!accessToken) {
-    throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado");
+    throw new Error(
+      "MERCADOPAGO_ACCESS_TOKEN não configurado. Em Vercel → Settings → Environment Variables, adicione MERCADOPAGO_ACCESS_TOKEN (e redesploy)."
+    );
   }
   return new MercadoPagoConfig({ accessToken });
 }

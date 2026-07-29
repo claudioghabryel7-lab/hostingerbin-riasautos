@@ -172,7 +172,7 @@ export function StoreFront() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <DbImage
-              src={settings.logoUrl || "/images/logo-fry-sushi.png"}
+              src="/images/logo-fry-sushi.png"
               alt="Fry Sushi"
               width={52}
               height={52}
@@ -286,7 +286,7 @@ export function StoreFront() {
             className="mb-5"
           >
             <DbImage
-              src={settings.logoUrl || "/images/logo-fry-sushi.png"}
+              src="/images/logo-fry-sushi.png"
               alt="Fry Sushi"
               width={120}
               height={120}
