@@ -199,7 +199,9 @@ export function useAdminAuth() {
       const res = await authValue.login(email, password);
       if (!res.isAdmin) {
         await authValue.logout();
-        throw new Error("Esta conta não é de colaborador.");
+        throw new Error(
+          "Login no Authentication ok, mas esta conta não é colaboradora. Use “Criar acesso de colaborador” com o código de convite."
+        );
       }
     },
     register: async (

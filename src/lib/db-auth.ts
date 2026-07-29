@@ -8,6 +8,7 @@ import {
   type User,
 } from "firebase/auth";
 import {
+  deleteField,
   doc,
   getDoc,
   serverTimestamp,
@@ -28,6 +29,15 @@ export interface SessionUser {
 const SESSION_KEY = "frysushi_session_v1";
 const DEFAULT_INVITE = "frysushi-admin";
 
+/** Campos proibidos — senha só no Firebase Authentication */
+const FORBIDDEN_USER_FIELDS = new Set([
+  "password",
+  "passwordHash",
+  "salt",
+  "sessionToken",
+  "hash",
+]);
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -39,25 +49,47 @@ function randomId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function stripSecrets<T extends Record<string, unknown>>(data: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (FORBIDDEN_USER_FIELDS.has(k)) continue;
+    out[k] = v;
+  }
+  return out as T;
+}
+
 function mapAuthError(err: unknown): Error {
   const code =
     err && typeof err === "object" && "code" in err
       ? String((err as { code: string }).code)
       : "";
   if (code === "auth/email-already-in-use") {
-    return new Error("Este e-mail já está cadastrado. Faça login.");
+    return new Error("Este e-mail já está no Authentication. Faça login.");
   }
-  if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
-    return new Error("E-mail ou senha incorretos.");
+  if (
+    code === "auth/invalid-credential" ||
+    code === "auth/wrong-password" ||
+    code === "auth/invalid-login-credentials"
+  ) {
+    return new Error(
+      "E-mail ou senha incorretos no Authentication. Se você cadastrou no modo antigo (só banco), crie de novo em “Primeiro acesso” ou peça reset."
+    );
   }
   if (code === "auth/user-not-found") {
-    return new Error("Conta não encontrada. Crie um cadastro.");
+    return new Error(
+      "Conta não existe no Authentication. Use “Criar acesso de colaborador”."
+    );
   }
   if (code === "auth/weak-password") {
     return new Error("A senha precisa ter no mínimo 6 caracteres.");
   }
   if (code === "auth/invalid-email") {
     return new Error("E-mail inválido.");
+  }
+  if (code === "auth/operation-not-allowed") {
+    return new Error(
+      "E-mail/senha não está ativo no Firebase Authentication. Ative em Authentication → Sign-in method."
+    );
   }
   if (err instanceof Error && err.message) return err;
   return new Error("Não foi possível autenticar. Tente novamente.");
@@ -93,17 +125,70 @@ export async function loadProfile(uid: string): Promise<UserProfile | null> {
       typeof data.couponPercent === "number" ? data.couponPercent : undefined,
     welcomeCouponClaimed: Boolean(data.welcomeCouponClaimed),
     createdAt:
-      typeof data.createdAt === "number"
-        ? data.createdAt
-        : Date.now(),
+      typeof data.createdAt === "number" ? data.createdAt : Date.now(),
     updatedAt:
       typeof data.updatedAt === "number" ? data.updatedAt : undefined,
   };
 }
 
 export async function loadIsCollaborator(uid: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, "collaborators", uid));
-  return snap.exists();
+  const collab = await getDoc(doc(db, "collaborators", uid));
+  if (collab.exists()) return true;
+  // Fallback: perfil com role (migração)
+  const user = await getDoc(doc(db, "users", uid));
+  return user.exists() && user.data()?.role === "collaborator";
+}
+
+async function ensureCollaboratorDocs(input: {
+  uid: string;
+  email: string;
+  name: string;
+  inviteCode: string;
+  isFirst: boolean;
+}) {
+  const now = Date.now();
+  await setDoc(
+    doc(db, "collaborators", input.uid),
+    stripSecrets({
+      uid: input.uid,
+      email: input.email,
+      name: input.name,
+      inviteCode: input.isFirst ? input.inviteCode : input.inviteCode,
+      createdAt: now,
+    }),
+    { merge: true }
+  );
+
+  if (input.isFirst) {
+    await setDoc(
+      doc(db, "meta", "storeSetup"),
+      {
+        inviteCode: input.inviteCode,
+        createdAt: serverTimestamp(),
+        createdBy: input.uid,
+      },
+      { merge: true }
+    );
+  }
+
+  await setDoc(
+    doc(db, "users", input.uid),
+    stripSecrets({
+      uid: input.uid,
+      email: input.email,
+      emailLower: normalizeEmail(input.email),
+      name: input.name,
+      phone: "(62) 99504-5038",
+      city: "Goiânia",
+      role: "collaborator" as const,
+      createdAt: now,
+      updatedAt: now,
+      passwordHash: deleteField(),
+      salt: deleteField(),
+      sessionToken: deleteField(),
+    }),
+    { merge: true }
+  );
 }
 
 export async function loginAccount(email: string, password: string) {
@@ -155,25 +240,60 @@ export async function registerCustomer(input: {
     });
 
     const now = Date.now();
-    const profileData = {
-      uid,
-      email: input.email.trim(),
-      emailLower: email,
-      name: input.name.trim(),
-      phone: input.phone.trim(),
-      address: input.address.trim(),
-      city: "Goiânia",
-      role: "customer" as const,
-      couponPercent: 10,
-      welcomeCouponClaimed: true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await setDoc(doc(db, "users", uid), profileData);
+    await setDoc(
+      doc(db, "users", uid),
+      stripSecrets({
+        uid,
+        email: input.email.trim(),
+        emailLower: email,
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        address: input.address.trim(),
+        city: "Goiânia",
+        role: "customer" as const,
+        couponPercent: 10,
+        welcomeCouponClaimed: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
 
     const profile = await loadProfile(uid);
     return { user: credential.user, profile };
   } catch (err) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: string }).code)
+        : "";
+    // E-mail já no Auth → faz login e atualiza perfil (migração do banco antigo)
+    if (code === "auth/email-already-in-use") {
+      const logged = await loginAccount(input.email, input.password);
+      const uid = logged.user.uid;
+      const now = Date.now();
+      await setDoc(
+        doc(db, "users", uid),
+        stripSecrets({
+          uid,
+          email: input.email.trim(),
+          emailLower: normalizeEmail(input.email),
+          name: input.name.trim(),
+          phone: input.phone.trim(),
+          address: input.address.trim(),
+          city: "Goiânia",
+          role: "customer" as const,
+          couponPercent: logged.profile?.couponPercent ?? 10,
+          welcomeCouponClaimed: true,
+          updatedAt: now,
+          createdAt: logged.profile?.createdAt || now,
+          passwordHash: deleteField(),
+          salt: deleteField(),
+          sessionToken: deleteField(),
+        }),
+        { merge: true }
+      );
+      const profile = await loadProfile(uid);
+      return { user: logged.user, profile };
+    }
     throw mapAuthError(err);
   }
 }
@@ -191,64 +311,65 @@ export async function registerCollaborator(input: {
   const expected =
     process.env.NEXT_PUBLIC_ADMIN_INVITE?.trim() || DEFAULT_INVITE;
   const invite = (input.inviteCode || "").trim() || expected;
+  const displayName = input.name?.trim() || "Colaborador Fry Sushi";
+  const email = normalizeEmail(input.email);
 
-  try {
-    const email = normalizeEmail(input.email);
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      input.password
-    );
-    const uid = credential.user.uid;
-    const displayName =
-      input.name?.trim() || "Colaborador Fry Sushi";
-    await updateProfile(credential.user, { displayName });
+  const setupRef = doc(db, "meta", "storeSetup");
 
-    const setupRef = doc(db, "meta", "storeSetup");
+  const finishWithUser = async (user: User) => {
     const setupSnap = await getDoc(setupRef);
     const isFirst = !setupSnap.exists();
 
     if (!isFirst) {
       const storedInvite = String(setupSnap.data()?.inviteCode || "");
       if (invite !== storedInvite && invite !== expected) {
-        await deleteUser(credential.user).catch(() => undefined);
         throw new Error(
           "Código de convite inválido. Peça ao responsável da loja."
         );
       }
     }
 
-    const now = Date.now();
-    await setDoc(doc(db, "collaborators", uid), {
-      uid,
+    await ensureCollaboratorDocs({
+      uid: user.uid,
       email: input.email.trim(),
       name: displayName,
       inviteCode: isFirst ? expected : invite,
-      createdAt: now,
+      isFirst,
     });
 
-    if (isFirst) {
-      await setDoc(setupRef, {
-        inviteCode: expected,
-        createdAt: serverTimestamp(),
-        createdBy: uid,
-      });
+    return { user };
+  };
+
+  try {
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      input.password
+    );
+    await updateProfile(credential.user, { displayName });
+    try {
+      return await finishWithUser(credential.user);
+    } catch (err) {
+      await deleteUser(credential.user).catch(() => undefined);
+      throw err;
+    }
+  } catch (err) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: string }).code)
+        : "";
+
+    // Já existe no Authentication → entra e garante docs de colaborador
+    if (code === "auth/email-already-in-use") {
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        input.password
+      );
+      await updateProfile(credential.user, { displayName }).catch(() => undefined);
+      return finishWithUser(credential.user);
     }
 
-    await setDoc(doc(db, "users", uid), {
-      uid,
-      email: input.email.trim(),
-      emailLower: email,
-      name: displayName,
-      phone: "(62) 99504-5038",
-      city: "Goiânia",
-      role: "collaborator",
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return { user: credential.user };
-  } catch (err) {
     throw mapAuthError(err);
   }
 }
@@ -257,20 +378,25 @@ export async function updateAccountProfile(
   uid: string,
   data: Partial<UserProfile>
 ) {
-  const clean = Object.fromEntries(
-    Object.entries(data).filter(
-      ([k, v]) =>
-        v !== undefined &&
-        k !== "uid" &&
-        k !== "email" &&
-        k !== "createdAt" &&
-        k !== "couponPercent" &&
-        k !== "welcomeCouponClaimed"
-    )
+  const clean = stripSecrets(
+    Object.fromEntries(
+      Object.entries(data).filter(
+        ([k, v]) =>
+          v !== undefined &&
+          k !== "uid" &&
+          k !== "email" &&
+          k !== "createdAt" &&
+          k !== "couponPercent" &&
+          k !== "welcomeCouponClaimed"
+      )
+    ) as Record<string, unknown>
   );
   await updateDoc(doc(db, "users", uid), {
     ...clean,
     updatedAt: Date.now(),
+    passwordHash: deleteField(),
+    salt: deleteField(),
+    sessionToken: deleteField(),
   });
   return loadProfile(uid);
 }

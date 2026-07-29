@@ -60,6 +60,9 @@ export default function AdminLoginPage() {
           <div>
             <p className="font-display text-3xl">Fry Sushi</p>
             <p className="text-sm text-[var(--rice-dim)]">Painel do colaborador</p>
+            <p className="mt-1 text-[11px] text-[var(--rice-dim)]">
+              Login via Firebase Authentication (não pelo banco)
+            </p>
           </div>
         </div>
 
