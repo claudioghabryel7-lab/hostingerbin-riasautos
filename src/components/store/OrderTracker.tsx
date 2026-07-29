@@ -226,6 +226,17 @@ export function OrderTracker({
                   : "Pedido concluído — obrigado!"}
           </p>
 
+          {order.paymentStatus === "pending" && (
+            <div className="mt-4">
+              <Link
+                href={`/pedido/${orderId}/pagar`}
+                className="inline-flex w-full items-center justify-center rounded-xl bg-[var(--salmon)] px-5 py-3 text-sm font-semibold text-[var(--ink)]"
+              >
+                Pagar agora no site (Pix ou cartão)
+              </Link>
+            </div>
+          )}
+
           {!rejected && (
             <div className="mt-8">
               <div className="status-track">
