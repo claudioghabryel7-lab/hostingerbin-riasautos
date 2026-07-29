@@ -2,16 +2,19 @@ import type { MenuItem, StoreSettings } from "@/types";
 
 export const DEFAULT_SETTINGS: StoreSettings = {
   isOpen: true,
-  closedMessage: "Estamos fechados agora. Voltamos amanhã às 18h.",
+  closedMessage: "Estamos fechados agora. Voltamos amanhã às 18h em Goiânia.",
   reopenAt: "18:00",
   deliveryFee: 8,
   minOrder: 25,
-  storeName: "Frysuroll",
-  phone: "(11) 99999-0000",
-  address: "Delivery de sushi quentinho",
+  storeName: "Fry Sushi",
+  phone: "(62) 99504-5038",
+  address: "Goiânia — GO",
+  city: "Goiânia",
+  pickupAddress: "Retirada em Goiânia — confirme o ponto pelo WhatsApp",
   heroImageUrl: "/images/hero-sushi.jpg",
-  logoUrl: "/images/logo-mark.svg",
-  accentNote: "Big Hots crocantes, feitos na hora.",
+  logoUrl: "/images/logo-fry-sushi.png",
+  accentNote:
+    "Delivery de sushi frito — um dos melhores hot rolls de Goiânia.",
 };
 
 export const DEFAULT_MENU: Omit<MenuItem, "id">[] = [
@@ -72,7 +75,7 @@ export const DEFAULT_MENU: Omit<MenuItem, "id">[] = [
     sortOrder: 6,
   },
   {
-    name: "Especial Frysuroll",
+    name: "Especial Fry Sushi",
     description: "Assinatura da casa: salmão flamejado, cream cheese e chips crocantes.",
     price: 39.9,
     category: "especiais",

@@ -31,6 +31,7 @@ export function orderStatusStep(status: OrderStatus): number {
     received: 1,
     preparing: 2,
     out_for_delivery: 3,
+    ready_for_pickup: 3,
     completed: 4,
   };
   return map[status] ?? -1;

@@ -7,19 +7,16 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Configurações da loja: leitura pública, escrita só admin
     match /store/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Cardápio: leitura pública, escrita só admin
     match /menuItems/{itemId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Pedidos: cliente cria e lê o próprio link; admin gerencia tudo
     match /orders/{orderId} {
       allow create: if true;
       allow read: if true;
@@ -30,10 +27,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Admins
+    match /users/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
     match /admins/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      // Primeiro admin pode se cadastrar se a coleção estiver vazia — tratado no client + seed
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update, delete: if isAdmin();
     }

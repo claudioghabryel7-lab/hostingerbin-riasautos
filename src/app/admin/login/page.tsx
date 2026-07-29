@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Button } from "@/components/ui/button";
+import { ensureStoreSeeded } from "@/lib/store";
 
 export default function AdminLoginPage() {
   const { login, register, user, isAdmin, loading } = useAdminAuth();
@@ -14,11 +15,14 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && isAdmin) router.replace("/admin");
+    if (!loading && user && isAdmin) {
+      ensureStoreSeeded().finally(() => router.replace("/admin"));
+    }
   }, [loading, user, isAdmin, router]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -27,7 +31,8 @@ export default function AdminLoginPage() {
     setError("");
     try {
       if (mode === "login") await login(email, password);
-      else await register(email, password, name);
+      else await register(email, password, name, inviteCode);
+      await ensureStoreSeeded();
       router.replace("/admin");
     } catch (err) {
       setError(
@@ -45,23 +50,42 @@ export default function AdminLoginPage() {
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
       <div className="glass-panel relative w-full max-w-md rounded-3xl p-8">
         <div className="mb-6 flex items-center gap-3">
-          <Image src="/images/logo-mark.svg" alt="" width={48} height={48} />
+          <Image
+            src="/images/logo-fry-sushi.png"
+            alt="Fry Sushi"
+            width={56}
+            height={56}
+            className="rounded-full"
+          />
           <div>
-            <p className="font-display text-3xl">Frysuroll</p>
-            <p className="text-sm text-[var(--rice-dim)]">Acesso do dono</p>
+            <p className="font-display text-3xl">Fry Sushi</p>
+            <p className="text-sm text-[var(--rice-dim)]">Painel do dono</p>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-3">
           {mode === "register" && (
-            <label className="block text-sm">
-              <span className="mb-1 block text-[var(--rice-dim)]">Nome</span>
-              <input
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
+            <>
+              <label className="block text-sm">
+                <span className="mb-1 block text-[var(--rice-dim)]">Nome</span>
+                <input
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-[var(--rice-dim)]">
+                  Código de convite (se já existir admin)
+                </span>
+                <input
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="frysushi-admin"
+                />
+              </label>
+            </>
           )}
           <label className="block text-sm">
             <span className="mb-1 block text-[var(--rice-dim)]">E-mail</span>

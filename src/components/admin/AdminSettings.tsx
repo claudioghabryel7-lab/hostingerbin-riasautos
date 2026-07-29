@@ -118,6 +118,28 @@ export function AdminSettingsPage() {
         </div>
 
         <label className="block text-sm">
+          <span className="mb-1 block text-[var(--rice-dim)]">Cidade</span>
+          <input
+            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+            value={form.city || "Goiânia"}
+            onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+          />
+        </label>
+
+        <label className="block text-sm">
+          <span className="mb-1 block text-[var(--rice-dim)]">
+            Endereço / ponto de retirada
+          </span>
+          <input
+            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+            value={form.pickupAddress || ""}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, pickupAddress: e.target.value }))
+            }
+          />
+        </label>
+
+        <label className="block text-sm">
           <span className="mb-1 block text-[var(--rice-dim)]">
             Aviso quando a loja estiver fechada
           </span>

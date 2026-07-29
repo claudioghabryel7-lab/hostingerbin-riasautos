@@ -13,11 +13,18 @@ import {
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const STEPS = [
+const STEPS_DELIVERY = [
   { key: "received", label: "Pedido recebido" },
   { key: "preparing", label: "Sendo preparado" },
   { key: "out_for_delivery", label: "Saiu para entrega" },
   { key: "completed", label: "Entregue" },
+] as const;
+
+const STEPS_PICKUP = [
+  { key: "received", label: "Pedido recebido" },
+  { key: "preparing", label: "Sendo preparado" },
+  { key: "ready_for_pickup", label: "Pronto para retirada" },
+  { key: "completed", label: "Retirado" },
 ] as const;
 
 export function OrderTracker({
@@ -92,6 +99,8 @@ export function OrderTracker({
 
   const step = orderStatusStep(order.status);
   const rejected = order.status === "rejected" || order.status === "cancelled";
+  const steps =
+    order.fulfillment === "pickup" ? STEPS_PICKUP : STEPS_DELIVERY;
 
   return (
     <div className="relative min-h-screen px-4 py-10">
@@ -129,7 +138,7 @@ export function OrderTracker({
           {!rejected && (
             <div className="mt-8">
               <div className="status-track">
-                {STEPS.map((s, i) => (
+                {steps.map((s, i) => (
                   <div
                     key={s.key}
                     className={`status-step ${step >= i + 1 ? "active" : ""}`}
@@ -137,7 +146,7 @@ export function OrderTracker({
                 ))}
               </div>
               <div className="mt-3 grid grid-cols-4 gap-2 text-[10px] text-[var(--rice-dim)] sm:text-xs">
-                {STEPS.map((s, i) => (
+                {steps.map((s, i) => (
                   <span
                     key={s.key}
                     className={step >= i + 1 ? "text-[var(--salmon)]" : ""}
@@ -177,6 +186,9 @@ export function OrderTracker({
           </div>
 
           <div className="mt-6 rounded-2xl bg-black/25 p-4 text-sm text-[var(--rice-dim)]">
+            <p className="mb-1 text-[var(--salmon)]">
+              {order.fulfillment === "pickup" ? "Retirada" : "Entrega"}
+            </p>
             <p>{order.customer.address}</p>
             {order.customer.neighborhood && <p>{order.customer.neighborhood}</p>}
             <p className="mt-1">{order.customer.phone}</p>

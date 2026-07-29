@@ -1,28 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { Shippori_Mincho, Outfit } from "next/font/google";
+import { Rowdies, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/hooks/useCart";
-import { AdminAuthProvider } from "@/hooks/useAdminAuth";
+import { AuthProvider } from "@/hooks/useAdminAuth";
 
-const display = Shippori_Mincho({
+const display = Rowdies({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "700"],
 });
 
-const body = Outfit({
+const body = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Frysuroll — Big Hots & Sushi Delivery",
+  title: "Fry Sushi — Hot rolls em Goiânia",
   description:
-    "Peça Big Hots crocantes e sushi fresco. Cardápio visual, sacola rápida e acompanhamento em tempo real.",
-  applicationName: "Frysuroll",
+    "Delivery de sushi frito em Goiânia. Big Hots crocantes, cardápio visual e pedido rápido.",
+  applicationName: "Fry Sushi",
   icons: {
-    icon: "/images/logo-mark.svg",
+    icon: "/images/logo-fry-sushi.png",
   },
 };
 
@@ -43,9 +43,9 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
       <body className="min-h-screen font-sans text-[var(--rice)]">
-        <AdminAuthProvider>
+        <AuthProvider>
           <CartProvider>{children}</CartProvider>
-        </AdminAuthProvider>
+        </AuthProvider>
       </body>
     </html>
   );

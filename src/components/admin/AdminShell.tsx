@@ -12,7 +12,7 @@ import {
   Store,
 } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { subscribeActiveOrders, updateSettings, subscribeSettings } from "@/lib/store";
+import { subscribeActiveOrders, updateSettings, subscribeSettings, ensureStoreSeeded } from "@/lib/store";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { StoreSettings } from "@/types";
@@ -48,6 +48,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     audioRef.current = new Audio("/sounds/new-order.wav");
     audioRef.current.preload = "auto";
+    ensureStoreSeeded().catch(() => {});
 
     const prime = () => {
       primed.current = true;
@@ -92,8 +93,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className="border-b border-white/8 bg-[var(--ink-soft)] md:min-h-screen md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-4 md:block">
           <div>
-            <p className="font-display text-2xl">Frysuroll</p>
-            <p className="text-xs text-[var(--rice-dim)]">Centro de comando</p>
+            <p className="font-display text-2xl">Fry Sushi</p>
+            <p className="text-xs text-[var(--rice-dim)]">Centro de comando · Goiânia</p>
           </div>
           <Button
             size="sm"

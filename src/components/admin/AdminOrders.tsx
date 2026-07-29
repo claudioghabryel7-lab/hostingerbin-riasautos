@@ -113,6 +113,9 @@ export function AdminOrdersPage() {
                   {order.customer.phone}
                 </p>
                 <p className="mt-1 text-sm">{order.customer.address}</p>
+                <p className="mt-1 text-xs uppercase tracking-wide text-[var(--salmon)]">
+                  {order.fulfillment === "pickup" ? "Retirada" : "Entrega"}
+                </p>
                 {order.customer.notes && (
                   <p className="mt-1 text-sm text-amber-200">
                     Obs: {order.customer.notes}
@@ -160,12 +163,22 @@ export function AdminOrdersPage() {
                   <Button
                     variant="secondary"
                     disabled={busy === order.id}
-                    onClick={() => act(order, "out_for_delivery")}
+                    onClick={() =>
+                      act(
+                        order,
+                        order.fulfillment === "pickup"
+                          ? "ready_for_pickup"
+                          : "out_for_delivery"
+                      )
+                    }
                   >
-                    Saiu para entrega
+                    {order.fulfillment === "pickup"
+                      ? "Pronto para retirada"
+                      : "Saiu para entrega"}
                   </Button>
                 )}
-                {order.status === "out_for_delivery" && (
+                {(order.status === "out_for_delivery" ||
+                  order.status === "ready_for_pickup") && (
                   <Button
                     disabled={busy === order.id}
                     onClick={() => act(order, "completed")}

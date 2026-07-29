@@ -1,12 +1,24 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, ShoppingBag, X, MapPin, Phone } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  ShoppingBag,
+  X,
+  MapPin,
+  Phone,
+  UserRound,
+  Bike,
+  Store,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/hooks/useAdminAuth";
 import {
   createOrder,
   ensureStoreSeeded,
@@ -16,6 +28,7 @@ import {
 import { formatCurrency, formatPhone, cn } from "@/lib/utils";
 import {
   CATEGORY_LABELS,
+  type FulfillmentType,
   type MenuCategory,
   type MenuItem,
   type StoreSettings,
@@ -39,16 +52,13 @@ export function StoreFront() {
   const [selected, setSelected] = useState<MenuItem | null>(null);
   const [loading, setLoading] = useState(true);
   const cart = useCart();
+  const { user, profile, isAdmin, logout } = useAuth();
 
   useEffect(() => {
     let unsubSettings = () => {};
     let unsubMenu = () => {};
     (async () => {
-      try {
-        await ensureStoreSeeded();
-      } catch (e) {
-        console.warn("Seed:", e);
-      }
+      await ensureStoreSeeded();
       unsubSettings = subscribeSettings(setSettings);
       unsubMenu = subscribeMenu((items) => {
         setMenu(items);
@@ -71,6 +81,8 @@ export function StoreFront() {
     return menu.filter((m) => m.category === activeCategory);
   }, [menu, activeCategory]);
 
+  const wa = settings.phone.replace(/\D/g, "");
+
   return (
     <div className="relative min-h-screen pb-28">
       <div className="pointer-events-none absolute inset-0 pattern-overlay" />
@@ -79,17 +91,18 @@ export function StoreFront() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <Image
-              src={settings.logoUrl || "/images/logo-mark.svg"}
-              alt="Frysuroll"
-              width={44}
-              height={44}
-              className="rounded-xl"
+              src={settings.logoUrl || "/images/logo-fry-sushi.png"}
+              alt="Fry Sushi"
+              width={52}
+              height={52}
+              className="rounded-full bg-black/40 object-cover ring-1 ring-white/15"
+              priority
             />
             <div>
-              <p className="font-display text-2xl leading-none tracking-tight text-[var(--rice)]">
-                {settings.storeName || "Frysuroll"}
+              <p className="font-display text-xl leading-none tracking-wide text-[var(--rice)] sm:text-2xl">
+                {settings.storeName || "Fry Sushi"}
               </p>
-              <p className="mt-1 flex items-center gap-2 text-xs text-[var(--rice-dim)]">
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--rice-dim)]">
                 <span
                   className={cn(
                     "inline-flex items-center gap-1.5",
@@ -104,27 +117,63 @@ export function StoreFront() {
                   />
                   {settings.isOpen ? "Aberto agora" : "Fechado"}
                 </span>
+                <span>· Goiânia</span>
               </p>
             </div>
           </div>
-          <nav className="hidden items-center gap-1 md:flex">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => {
-                  setActiveCategory(cat);
-                  document
-                    .getElementById("cardapio")
-                    ?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="rounded-full px-3 py-1.5 text-sm text-[var(--rice-dim)] transition hover:bg-white/8 hover:text-[var(--rice)]"
+
+          <div className="flex items-center gap-2">
+            <nav className="hidden items-center gap-1 lg:flex">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => {
+                    setActiveCategory(cat);
+                    document
+                      .getElementById("cardapio")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="rounded-full px-3 py-1.5 text-sm text-[var(--rice-dim)] transition hover:bg-white/8 hover:text-[var(--rice)]"
+                >
+                  {CATEGORY_LABELS[cat]}
+                </button>
+              ))}
+            </nav>
+            {user ? (
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="hidden rounded-full bg-white/8 px-3 py-1.5 text-xs sm:inline"
+                  >
+                    Painel
+                  </Link>
+                )}
+                <Link
+                  href="/entrar"
+                  className="rounded-full bg-white/8 px-3 py-1.5 text-xs text-[var(--rice)]"
+                >
+                  {profile?.name?.split(" ")[0] || "Conta"}
+                </Link>
+                <button
+                  onClick={() => logout()}
+                  className="rounded-full px-2 py-1.5 text-xs text-[var(--rice-dim)]"
+                >
+                  Sair
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/entrar"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-2 text-sm text-[var(--rice)]"
               >
-                {CATEGORY_LABELS[cat]}
-              </button>
-            ))}
-          </nav>
+                <UserRound className="size-4" />
+                Entrar
+              </Link>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2 overflow-x-auto px-4 pb-3 md:hidden">
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden">
           <CategoryChip
             active={activeCategory === "todos"}
             onClick={() => setActiveCategory("todos")}
@@ -144,7 +193,7 @@ export function StoreFront() {
       <section className="relative min-h-[88vh] w-full overflow-hidden">
         <Image
           src={settings.heroImageUrl || "/images/hero-sushi.jpg"}
-          alt="Frysuroll Big Hots"
+          alt="Fry Sushi Goiânia"
           fill
           priority
           className="object-cover"
@@ -152,22 +201,35 @@ export function StoreFront() {
         />
         <div className="hero-scrim absolute inset-0" />
         <div className="relative z-10 mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-end px-4 pb-16 pt-28 md:justify-center md:pb-24">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.55 }}
+            className="mb-5"
+          >
+            <Image
+              src={settings.logoUrl || "/images/logo-fry-sushi.png"}
+              alt="Fry Sushi"
+              width={120}
+              height={120}
+              className="rounded-full shadow-[0_20px_60px_rgba(0,0,0,0.45)] ring-2 ring-white/20"
+            />
+          </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="font-display text-5xl leading-[0.9] text-[var(--rice)] sm:text-7xl md:text-8xl"
+            className="font-display text-5xl leading-[0.95] text-[var(--rice)] sm:text-7xl md:text-8xl"
           >
-            Frysuroll
+            Fry Sushi
           </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.12 }}
-            className="mt-5 max-w-md text-lg text-[var(--rice)]/90 md:text-xl"
+            className="mt-5 max-w-lg text-lg text-[var(--rice)]/90 md:text-xl"
           >
-            {settings.accentNote ||
-              "Big Hots crocantes, feitos na hora. Peça em poucos toques."}
+            {settings.accentNote}
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -185,10 +247,17 @@ export function StoreFront() {
             >
               Ver cardápio
             </Button>
+            <a
+              href={`https://wa.me/55${wa}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-12 items-center rounded-xl border border-white/20 px-5 text-sm font-semibold"
+            >
+              WhatsApp
+            </a>
             {!settings.isOpen && (
               <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-                {settings.closedMessage ||
-                  `Voltamos amanhã às ${settings.reopenAt}`}
+                {settings.closedMessage}
               </div>
             )}
           </motion.div>
@@ -201,7 +270,7 @@ export function StoreFront() {
             Em destaque
           </h2>
           <p className="mt-2 text-[var(--rice-dim)]">
-            Os Big Hots e especiais que mais pedem.
+            Os hot rolls que mais pedem em Goiânia.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((item, i) => (
@@ -227,21 +296,6 @@ export function StoreFront() {
             <p className="mt-2 text-[var(--rice-dim)]">
               Toque no prato para ver foto, descrição e preço.
             </p>
-          </div>
-          <div className="hidden gap-2 md:flex">
-            <CategoryChip
-              active={activeCategory === "todos"}
-              onClick={() => setActiveCategory("todos")}
-              label="Tudo"
-            />
-            {CATEGORIES.map((cat) => (
-              <CategoryChip
-                key={cat}
-                active={activeCategory === cat}
-                onClick={() => setActiveCategory(cat)}
-                label={CATEGORY_LABELS[cat]}
-              />
-            ))}
           </div>
         </div>
 
@@ -272,16 +326,21 @@ export function StoreFront() {
 
       <footer className="mx-auto mt-10 max-w-6xl border-t border-white/8 px-4 py-10 text-sm text-[var(--rice-dim)]">
         <div className="flex flex-wrap gap-6">
-          <p className="flex items-center gap-2">
+          <a
+            href={`https://wa.me/55${wa}`}
+            className="flex items-center gap-2 hover:text-[var(--rice)]"
+          >
             <Phone className="size-4 text-[var(--salmon)]" />
             {settings.phone}
-          </p>
+          </a>
           <p className="flex items-center gap-2">
             <MapPin className="size-4 text-[var(--salmon)]" />
             {settings.address}
           </p>
         </div>
-        <p className="mt-4 opacity-70">© {new Date().getFullYear()} Frysuroll</p>
+        <p className="mt-4 opacity-70">
+          © {new Date().getFullYear()} Fry Sushi · Goiânia
+        </p>
       </footer>
 
       <button
@@ -462,7 +521,9 @@ function ItemModal({
 function CartDrawer({ settings }: { settings: StoreSettings }) {
   const cart = useCart();
   const router = useRouter();
+  const { user, profile, updateCustomerProfile } = useAuth();
   const [step, setStep] = useState<"cart" | "checkout">("cart");
+  const [fulfillment, setFulfillment] = useState<FulfillmentType>("delivery");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -474,23 +535,44 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
     notes: "",
   });
 
-  const deliveryFee = settings.deliveryFee || 0;
-  const total = cart.subtotal + (cart.items.length ? deliveryFee : 0);
-
   useEffect(() => {
     if (!cart.open) {
       queueMicrotask(() => setStep("cart"));
     }
   }, [cart.open]);
 
+  useEffect(() => {
+    if (!profile) return;
+    setForm((f) => ({
+      ...f,
+      name: profile.name || f.name,
+      phone: profile.phone || f.phone,
+      address: profile.address || f.address,
+      complement: profile.complement || f.complement,
+      neighborhood: profile.neighborhood || f.neighborhood,
+    }));
+  }, [profile]);
+
+  const deliveryFee =
+    fulfillment === "delivery" ? settings.deliveryFee || 0 : 0;
+  const total = cart.subtotal + (cart.items.length ? deliveryFee : 0);
+
   const checkout = async () => {
     setError("");
+    if (!user) {
+      setError("Entre na sua conta para finalizar o pedido.");
+      return;
+    }
     if (!settings.isOpen) {
       setError(settings.closedMessage);
       return;
     }
-    if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
-      setError("Preencha nome, telefone e endereço.");
+    if (!form.name.trim() || !form.phone.trim()) {
+      setError("Preencha nome e telefone.");
+      return;
+    }
+    if (fulfillment === "delivery" && !form.address.trim()) {
+      setError("Informe o endereço de entrega em Goiânia.");
       return;
     }
     if (cart.subtotal < (settings.minOrder || 0)) {
@@ -500,15 +582,31 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
 
     setSubmitting(true);
     try {
+      await updateCustomerProfile({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        complement: form.complement.trim(),
+        neighborhood: form.neighborhood.trim(),
+        city: "Goiânia",
+      });
+
       const orderId = await createOrder({
+        userId: user.uid,
         customer: {
           name: form.name.trim(),
           phone: form.phone.trim(),
-          address: form.address.trim(),
+          email: user.email || undefined,
+          address:
+            fulfillment === "delivery"
+              ? form.address.trim()
+              : settings.pickupAddress || "Retirada em Goiânia",
           complement: form.complement.trim() || undefined,
           neighborhood: form.neighborhood.trim() || undefined,
+          city: "Goiânia",
           notes: form.notes.trim() || undefined,
         },
+        fulfillment,
         items: cart.items,
         subtotal: cart.subtotal,
         deliveryFee,
@@ -624,15 +722,60 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     ))}
                   </ul>
                 )
+              ) : !user ? (
+                <div className="space-y-4">
+                  <p className="text-[var(--rice-dim)]">
+                    Para pedir, entre ou crie sua conta. Assim salvamos seu
+                    telefone e endereço para os próximos pedidos.
+                  </p>
+                  <Link href="/entrar?next=checkout">
+                    <Button className="w-full" size="lg">
+                      Entrar / Criar conta
+                    </Button>
+                  </Link>
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFulfillment("delivery")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-sm",
+                        fulfillment === "delivery"
+                          ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
+                          : "border-white/10 bg-black/20"
+                      )}
+                    >
+                      <Bike className="size-5" />
+                      Entrega
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFulfillment("pickup")}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-sm",
+                        fulfillment === "pickup"
+                          ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
+                          : "border-white/10 bg-black/20"
+                      )}
+                    >
+                      <Store className="size-5" />
+                      Retirada
+                    </button>
+                  </div>
+
                   {(
                     [
                       ["name", "Nome"],
                       ["phone", "Telefone / WhatsApp"],
-                      ["address", "Endereço completo"],
-                      ["neighborhood", "Bairro"],
-                      ["complement", "Complemento"],
+                      ...(fulfillment === "delivery"
+                        ? ([
+                            ["address", "Endereço completo (Goiânia)"],
+                            ["neighborhood", "Bairro"],
+                            ["complement", "Complemento"],
+                          ] as const)
+                        : []),
                       ["notes", "Observações"],
                     ] as const
                   ).map(([key, label]) => (
@@ -666,6 +809,12 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                       )}
                     </label>
                   ))}
+
+                  {fulfillment === "pickup" && (
+                    <p className="rounded-xl bg-white/5 px-3 py-2 text-sm text-[var(--rice-dim)]">
+                      {settings.pickupAddress}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -677,11 +826,15 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                   <span>{formatCurrency(cart.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-[var(--rice-dim)]">
-                  <span>Taxa de entrega</span>
                   <span>
-                    {cart.items.length
-                      ? formatCurrency(deliveryFee)
-                      : formatCurrency(0)}
+                    {fulfillment === "pickup" ? "Retirada" : "Taxa de entrega"}
+                  </span>
+                  <span>
+                    {fulfillment === "pickup"
+                      ? "Grátis"
+                      : cart.items.length
+                        ? formatCurrency(deliveryFee)
+                        : formatCurrency(0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-lg font-semibold">
@@ -689,9 +842,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                   <span>{formatCurrency(total)}</span>
                 </div>
               </div>
-              {error && (
-                <p className="mb-3 text-sm text-amber-200">{error}</p>
-              )}
+              {error && <p className="mb-3 text-sm text-amber-200">{error}</p>}
               {!settings.isOpen && (
                 <p className="mb-3 rounded-xl bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
                   {settings.closedMessage}
@@ -706,7 +857,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                 >
                   Continuar
                 </Button>
-              ) : (
+              ) : user ? (
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
@@ -724,7 +875,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     {submitting ? "Redirecionando..." : "Pagar com Mercado Pago"}
                   </Button>
                 </div>
-              )}
+              ) : null}
             </div>
           </motion.aside>
         </motion.div>

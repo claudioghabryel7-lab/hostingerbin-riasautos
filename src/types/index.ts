@@ -5,6 +5,7 @@ export type OrderStatus =
   | "received"
   | "preparing"
   | "out_for_delivery"
+  | "ready_for_pickup"
   | "completed"
   | "rejected"
   | "cancelled";
@@ -15,6 +16,8 @@ export type PaymentStatus =
   | "refunded"
   | "rejected"
   | "cancelled";
+
+export type FulfillmentType = "delivery" | "pickup";
 
 export interface MenuItem {
   id: string;
@@ -41,10 +44,25 @@ export interface CartItem {
 export interface CustomerInfo {
   name: string;
   phone: string;
+  email?: string;
   address: string;
   complement?: string;
   neighborhood?: string;
+  city?: string;
   notes?: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  name: string;
+  phone: string;
+  address?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface StoreSettings {
@@ -56,14 +74,18 @@ export interface StoreSettings {
   storeName: string;
   phone: string;
   address: string;
+  city: string;
   heroImageUrl: string;
   logoUrl: string;
   accentNote?: string;
+  pickupAddress?: string;
 }
 
 export interface Order {
   id: string;
+  userId?: string;
   customer: CustomerInfo;
+  fulfillment: FulfillmentType;
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;
@@ -97,6 +119,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   received: "Pedido recebido",
   preparing: "Sendo preparado",
   out_for_delivery: "Saiu para entrega",
+  ready_for_pickup: "Pronto para retirada",
   completed: "Finalizado",
   rejected: "Recusado",
   cancelled: "Cancelado",
