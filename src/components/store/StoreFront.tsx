@@ -65,18 +65,20 @@ export function StoreFront() {
   }, [isAdmin, router]);
 
   useEffect(() => {
-    try {
-      if (!localStorage.getItem("frysushi_banner_closed")) {
-        setShowBanner(true);
+    queueMicrotask(() => {
+      try {
+        if (!localStorage.getItem("frysushi_banner_closed")) {
+          setShowBanner(true);
+        }
+        if (sessionStorage.getItem("frysushi_welcome_coupon")) {
+          setCouponToast(true);
+          sessionStorage.removeItem("frysushi_welcome_coupon");
+          setTimeout(() => setCouponToast(false), 8000);
+        }
+      } catch {
+        /* ignore */
       }
-      if (sessionStorage.getItem("frysushi_welcome_coupon")) {
-        setCouponToast(true);
-        sessionStorage.removeItem("frysushi_welcome_coupon");
-        setTimeout(() => setCouponToast(false), 8000);
-      }
-    } catch {
-      /* ignore */
-    }
+    });
   }, []);
 
   useEffect(() => {
