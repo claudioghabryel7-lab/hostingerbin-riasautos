@@ -21,7 +21,7 @@ export default function EntrarClient() {
   } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next");
+  params.get("next"); // reserved for redirects futuros
   const [mode, setMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
