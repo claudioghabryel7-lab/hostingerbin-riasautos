@@ -20,6 +20,26 @@ import type { Coupon, MenuItem, Order, OrderStatus, Review, StoreSettings } from
 
 export const SETTINGS_PATH = "store/settings";
 
+/** Remove undefined (Firestore rejeita). */
+export function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    if (v && typeof v === "object" && !Array.isArray(v) && !(v instanceof Date)) {
+      out[k] = stripUndefined(v as Record<string, unknown>);
+    } else if (Array.isArray(v)) {
+      out[k] = v.map((item) =>
+        item && typeof item === "object"
+          ? stripUndefined(item as Record<string, unknown>)
+          : item
+      );
+    } else {
+      out[k] = v;
+    }
+  }
+  return out as T;
+}
+
 function normalizeSettings(data?: Partial<StoreSettings> | null): StoreSettings {
   const merged = { ...DEFAULT_SETTINGS, ...(data || {}) };
   if (!merged.phone || merged.phone.includes("99999") || merged.phone.includes("(11)")) {
@@ -179,11 +199,12 @@ export async function createOrder(
   order: Omit<Order, "id" | "createdAt" | "updatedAt">
 ) {
   const now = Date.now();
-  const refDoc = await addDoc(collection(db, "orders"), {
+  const payload = stripUndefined({
     ...order,
     createdAt: now,
     updatedAt: now,
-  });
+  } as Record<string, unknown>);
+  const refDoc = await addDoc(collection(db, "orders"), payload);
   return refDoc.id;
 }
 
@@ -312,23 +333,33 @@ export function subscribeReviews(cb: (reviews: Review[]) => void): Unsubscribe {
 }
 
 export async function createCoupon(data: Omit<Coupon, "id" | "createdAt">) {
-  const refDoc = await addDoc(collection(db, "coupons"), {
+  const payload = stripUndefined({
     ...data,
     createdAt: Date.now(),
-  });
+  } as Record<string, unknown>);
+  const refDoc = await addDoc(collection(db, "coupons"), payload);
   if (data.userId) {
-    await updateDoc(doc(db, "users", data.userId), {
-      couponPercent: data.percent,
-      updatedAt: Date.now(),
-    });
+    await setDoc(
+      doc(db, "users", data.userId),
+      stripUndefined({
+        couponPercent: data.percent,
+        updatedAt: Date.now(),
+      }),
+      { merge: true }
+    );
   }
   return refDoc.id;
 }
 
 export function subscribeCoupons(cb: (coupons: Coupon[]) => void): Unsubscribe {
   return onSnapshot(
-    query(collection(db, "coupons"), orderBy("createdAt", "desc")),
-    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Coupon))),
+    collection(db, "coupons"),
+    (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Coupon))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      cb(list);
+    },
     () => cb([])
   );
 }

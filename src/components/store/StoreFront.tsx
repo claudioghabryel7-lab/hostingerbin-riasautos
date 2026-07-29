@@ -657,6 +657,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
   const { user, profile, updateCustomerProfile } = useAuth();
   const [step, setStep] = useState<"cart" | "checkout">("cart");
   const [fulfillment, setFulfillment] = useState<FulfillmentType>("delivery");
+  const [payMethod, setPayMethod] = useState<"pix" | "card">("pix");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -742,28 +743,32 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
       const { rememberGuestOrder } = await import("@/lib/store");
 
       const orderId = await createOrder({
-        userId: user?.uid,
-        guestToken,
-        isGuest: !user,
+        ...(user?.uid ? { userId: user.uid } : {}),
+        ...(guestToken ? { guestToken, isGuest: true } : { isGuest: false }),
         customer: {
           name: form.name.trim(),
           phone: form.phone.trim(),
-          email: user?.email || undefined,
+          ...(user?.email ? { email: user.email } : {}),
           address:
             fulfillment === "delivery"
               ? form.address.trim()
               : settings.pickupAddress || "Retirada em Goiânia",
-          complement: form.complement.trim() || undefined,
-          neighborhood: form.neighborhood.trim() || undefined,
+          ...(form.complement.trim()
+            ? { complement: form.complement.trim() }
+            : {}),
+          ...(form.neighborhood.trim()
+            ? { neighborhood: form.neighborhood.trim() }
+            : {}),
           city: "Goiânia",
-          notes: form.notes.trim() || undefined,
+          ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
         },
         fulfillment,
         items: cart.items,
         subtotal: cart.subtotal,
         deliveryFee,
-        discountPercent: discountPercent || undefined,
-        discountAmount: discountAmount || undefined,
+        ...(discountPercent
+          ? { discountPercent, discountAmount }
+          : {}),
         total,
         status: "awaiting_payment",
         paymentStatus: "pending",
@@ -774,7 +779,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId, paymentMethod: payMethod }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha no checkout");
@@ -973,6 +978,38 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                       {settings.pickupAddress}
                     </p>
                   )}
+
+                  <div>
+                    <p className="mb-2 text-sm text-[var(--rice-dim)]">
+                      Como deseja pagar?
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("pix")}
+                        className={cn(
+                          "rounded-2xl border px-3 py-4 text-sm font-semibold",
+                          payMethod === "pix"
+                            ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
+                            : "border-white/10 bg-black/20"
+                        )}
+                      >
+                        Pix
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("card")}
+                        className={cn(
+                          "rounded-2xl border px-3 py-4 text-sm font-semibold",
+                          payMethod === "card"
+                            ? "border-[var(--salmon)] bg-[var(--salmon)]/15"
+                            : "border-white/10 bg-black/20"
+                        )}
+                      >
+                        Cartão
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1036,7 +1073,7 @@ function CartDrawer({ settings }: { settings: StoreSettings }) {
                     disabled={submitting || !settings.isOpen}
                     onClick={checkout}
                   >
-                    {submitting ? "Redirecionando..." : "Pagar com Mercado Pago"}
+                    {submitting ? "Finalizando..." : "Finalizar pedido"}
                   </Button>
                 </div>
               )}

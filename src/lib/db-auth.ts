@@ -228,10 +228,17 @@ export async function updateAccountProfile(
   uid: string,
   data: Partial<UserProfile>
 ) {
-  const { uid: _u, email: _e, createdAt: _c, ...rest } = data as UserProfile &
-    Record<string, unknown>;
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(
+      ([k, v]) =>
+        v !== undefined &&
+        k !== "uid" &&
+        k !== "email" &&
+        k !== "createdAt"
+    )
+  );
   await updateDoc(doc(db, "users", uid), {
-    ...rest,
+    ...clean,
     updatedAt: Date.now(),
   });
   return getAccount(uid);

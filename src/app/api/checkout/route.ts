@@ -64,7 +64,9 @@ async function patchOrder(orderId: string, data: Record<string, unknown>) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { orderId } = await req.json();
+    const body = await req.json();
+    const orderId = body.orderId as string | undefined;
+    const paymentMethod = (body.paymentMethod as "pix" | "card" | undefined) || "pix";
     if (!orderId) {
       return NextResponse.json({ error: "orderId obrigatório" }, { status: 400 });
     }
@@ -72,6 +74,9 @@ export async function POST(req: NextRequest) {
     const order = (await getOrderFromFirestore(orderId)) as {
       id: string;
       total?: number;
+      subtotal?: number;
+      deliveryFee?: number;
+      discountAmount?: number;
       items?: { name: string; quantity: number; price: number }[];
       customer?: { name?: string; email?: string };
       status?: string;
@@ -86,6 +91,47 @@ export async function POST(req: NextRequest) {
       req.nextUrl.origin ||
       "http://localhost:3000";
 
+    const itemsSum = (order.items || []).reduce(
+      (a, i) => a + Number(i.price) * Number(i.quantity),
+      0
+    );
+    const deliveryFee = Number(order.deliveryFee || 0);
+    const discount = Number(order.discountAmount || 0);
+    const computedTotal = Math.max(
+      0.01,
+      Number(order.total) || itemsSum + deliveryFee - discount
+    );
+
+    // Um item com o total evita erro de desconto negativo na API do MP
+    const items = [
+      {
+        id: "pedido",
+        title: `Pedido Fry Sushi #${orderId.slice(0, 8)}`,
+        quantity: 1,
+        unit_price: Number(computedTotal.toFixed(2)),
+        currency_id: "BRL" as const,
+      },
+    ];
+
+    // Preferência: Pix ou cartão (a pessoa escolhe no checkout MP filtrado)
+    const payment_methods =
+      paymentMethod === "pix"
+        ? {
+            excluded_payment_types: [
+              { id: "credit_card" },
+              { id: "debit_card" },
+              { id: "ticket" },
+              { id: "atm" },
+            ],
+          }
+        : {
+            excluded_payment_types: [
+              { id: "bank_transfer" },
+              { id: "ticket" },
+              { id: "atm" },
+            ],
+          };
+
     const preference = getPreferenceApi();
     const result = await preference.create({
       body: {
@@ -97,39 +143,13 @@ export async function POST(req: NextRequest) {
           pending: `${baseUrl}/pedido/${orderId}?payment=pending`,
         },
         auto_return: "approved",
-        statement_descriptor: "FRYSUROLL",
-        items: (order.items || []).map((item) => ({
-          id: item.name,
-          title: item.name,
-          quantity: item.quantity,
-          unit_price: Number(item.price),
-          currency_id: "BRL",
-        })).concat(
-          Number(order.total) >
-            (order.items || []).reduce(
-              (a, i) => a + i.price * i.quantity,
-              0
-            )
-            ? [
-                {
-                  id: "delivery",
-                  title: "Taxa de entrega",
-                  quantity: 1,
-                  unit_price:
-                    Number(order.total) -
-                    (order.items || []).reduce(
-                      (a, i) => a + i.price * i.quantity,
-                      0
-                    ),
-                  currency_id: "BRL",
-                },
-              ]
-            : []
-        ),
-        payer: {
-          name: order.customer?.name,
-        },
-        metadata: { orderId },
+        statement_descriptor: "FRYSUSHI",
+        items,
+        payment_methods,
+        ...(order.customer?.name
+          ? { payer: { name: order.customer.name } }
+          : {}),
+        metadata: { orderId, paymentMethod },
       },
     });
 
@@ -144,7 +164,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       preferenceId,
       initPoint,
-      // Client also writes preference id if admin SDK unavailable
       orderId,
     });
   } catch (e) {
