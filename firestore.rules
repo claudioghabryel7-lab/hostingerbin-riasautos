@@ -1,8 +1,5 @@
 rules_version = '2';
 
-// Fry Sushi — projeto gestorfinan-88c9c
-// Contas, cardápio, pedidos e imagens no Firestore.
-// Publique com: npm run firebase:rules
 service cloud.firestore {
   match /databases/{database}/documents {
     match /store/{docId} {
