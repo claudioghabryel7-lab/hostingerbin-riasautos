@@ -1,22 +1,21 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
+// Projeto Firebase: gestorfinan-88c9c (Auth + Firestore)
 const firebaseConfig = {
-  apiKey: "AIzaSyCGAv-nVca02Ih8A291e6M6BX4l6c-xN34",
-  authDomain: "obinarias-68350.firebaseapp.com",
-  projectId: "obinarias-68350",
-  storageBucket: "obinarias-68350.firebasestorage.app",
-  messagingSenderId: "553693849316",
-  appId: "1:553693849316:web:a65ac79d56b90ddc86aef1",
-  measurementId: "G-E1LHPB2FYS"
+  apiKey: "AIzaSyAiKEREYXMNgEyDptOb8Ct-9_OYYsn4-fo",
+  authDomain: "gestorfinan-88c9c.firebaseapp.com",
+  projectId: "gestorfinan-88c9c",
+  storageBucket: "gestorfinan-88c9c.firebasestorage.app",
+  messagingSenderId: "131476996203",
+  appId: "1:131476996203:web:da10dc1e2b1f171962712e",
+  measurementId: "G-YLDJKY2801",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-export { auth, db };
+export { auth, db, firebaseConfig };
 export default app;

@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fry Sushi (Goiânia)
 
-## Getting Started
+Next.js + Firebase projeto **`gestorfinan-88c9c`**.
 
-First, run the development server:
+## Variáveis na Vercel (obrigatório)
+
+Em **Project → Settings → Environment Variables**, configure (Production + Preview):
+
+| Nome | Obrigatória | Exemplo / nota |
+|------|-------------|----------------|
+| `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | Sim | `APP_USR-...` (chave pública) |
+| `MERCADOPAGO_ACCESS_TOKEN` | Sim | `APP_USR-...` (Access Token — **nunca** publique no front) |
+| `MERCADOPAGO_CLIENT_ID` | Recomendada | ID da aplicação MP |
+| `MERCADOPAGO_CLIENT_SECRET` | Recomendada | Secret da aplicação MP |
+| `NEXT_PUBLIC_APP_URL` | Sim | URL do site, ex. `https://seu-projeto.vercel.app` (sem `/` no final) |
+| `FIREBASE_PROJECT_ID` | Sim | `gestorfinan-88c9c` |
+| `FIREBASE_STORAGE_BUCKET` | Sim | `gestorfinan-88c9c.firebasestorage.app` |
+| `NEXT_PUBLIC_ADMIN_INVITE` | Sim | `frysushi-admin` |
+| `NEXT_PUBLIC_ADMIN_EMAIL` | Opcional | e-mail do 1º colaborador |
+| `FIREBASE_SERVICE_ACCOUNT` | Recomendada | JSON da service account **em uma linha** (webhooks/estorno) |
+| `FIREBASE_TOKEN` | Opcional | só para publicar regras via CLI |
+
+Depois de salvar, faça **Redeploy**. Sem `MERCADOPAGO_ACCESS_TOKEN` o checkout mostra erro ao finalizar.
+
+## Segurança Firebase
+
+1. Authentication → ative **E-mail/senha**
+2. Firestore → Rules → publique `firestore.rules`
+
+Contas ficam no **Firebase Authentication**. O Firestore só guarda perfil (`users/{uid}`) **sem senha**. Contas antigas com `passwordHash` no banco não logam — cadastre de novo (ou use o login após migração no Auth).
+
+## Scripts
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run firebase:rules
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
