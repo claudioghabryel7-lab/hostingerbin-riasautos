@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frysuroll
 
-## Getting Started
+Site de delivery de sushi com duas faces:
 
-First, run the development server:
+- **Loja (cliente):** vitrine com fotos grandes, categorias, sacola fixa, checkout Mercado Pago e acompanhamento em tempo real.
+- **Painel (dono):** abrir/fechar loja, gerenciar cardápio (fotos editáveis), pedidos com alerta sonoro, aceitar / sair para entrega / finalizar, e **recusar com estorno automático** no Mercado Pago.
+
+## Stack
+
+- Next.js 16 + React 19 + Tailwind 4
+- Firebase Auth, Firestore e Storage (configuração do projeto preservada)
+- Mercado Pago Checkout Pro (preferência + webhook + refund)
+
+## Configuração
+
+1. Copie `.env.example` para `.env.local` e preencha as chaves do Mercado Pago.
+2. No Firebase Console:
+   - Ative **Authentication** (e-mail/senha)
+   - Publique `firestore.rules` e `storage.rules`
+   - Crie índices se o console pedir (pedidos por `createdAt` / `status`)
+3. Rode:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Acesse a loja em `/` e o painel em `/admin/login` (crie o primeiro usuário admin).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Autonomia do admin
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Trocar **hero**, **logo** e **fotos dos pratos** pelo painel (upload no Storage)
+- Alterar preços e disponibilidade (item some da loja na hora)
+- Abrir/fechar a loja com mensagem customizada
+- Recusar pedido pago → API estorna no Mercado Pago e o status atualiza para o cliente
 
-## Learn More
+## Webhook Mercado Pago
 
-To learn more about Next.js, take a look at the following resources:
+Configure a URL de notificação:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`https://SEU_DOMINIO/api/webhooks/mercadopago`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Opcional: `FIREBASE_SERVICE_ACCOUNT` (JSON) para o servidor gravar confirmações sem depender do cliente.
